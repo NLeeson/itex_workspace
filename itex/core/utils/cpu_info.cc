@@ -219,13 +219,13 @@ class CPUIDInfo {
     // The latest Intel 64 and IA-32 Architectures Software Developer's Manual
     // Volume 2A (December 2021) does not have information on AMX yet. We use
     // the information from Xbyak in oneDNN.
-    // https://github.com/oneapi-src/oneDNN/blob/acf8d214cedfe7e24c9446bacc1f9f648c9273f8/src/cpu/x64/xbyak/xbyak_util.h#L536-L538
+    // https://github.com/oneapi-src/oneDNN/blob/b2a9850a5a518c92c0e4bccd273f22e5defcad1a/third_party/xbyak/xbyak_util.h#L668-L670
     cpuid->have_amx_tile_ = (edx >> 24) & 0x1;
     cpuid->have_amx_int8_ = (edx >> 25) & 0x1;
     cpuid->have_amx_bf16_ = (edx >> 22) & 0x1;
 
     // Check avx512_fp16, using the information from Xbyak in oneDNN
-    // https://github.com/oneapi-src/oneDNN/blob/acf8d214cedfe7e24c9446bacc1f9f648c9273f8/src/cpu/x64/xbyak/xbyak_util.h#L516
+    // https://github.com/oneapi-src/oneDNN/blob/b2a9850a5a518c92c0e4bccd273f22e5defcad1a/third_party/xbyak/xbyak_util.h#L636
     cpuid->have_avx512_fp16_ = have_avx512 && ((edx >> 23) & 0x1);
 
     // Get more Structured Extended Feature info by issuing CPUID with
