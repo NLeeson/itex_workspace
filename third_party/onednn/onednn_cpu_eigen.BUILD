@@ -138,7 +138,7 @@ gen_onednn_version(
 _COPTS_LIST = [
     "-fexceptions",
     # TODO(itex): for symbol collision, may be removed in produce version
-    "-fopenmp",
+    "-qopenmp",
     "-Wno-unknown-pragmas",
 ] + [
     "-UUSE_MKL",
@@ -232,7 +232,7 @@ _GRAPH_COPTS_CPU_LIST = [
     "-DSC_BUILTIN_JIT_ENABLED=1",
     "-DSC_CFAKE_JIT_ENABLED=1",
     "-DSC_LLVM_BACKEND=16",
-    "-fopenmp",
+    "-qopenmp",
 ]) + if_cc_build([
     "-fvisibility-inlines-hidden",
     "-fvisibility=hidden",

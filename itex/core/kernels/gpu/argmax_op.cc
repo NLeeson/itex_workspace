@@ -30,6 +30,7 @@ limitations under the License.
 #include "itex/core/utils/tensor_shape.h"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
 
+
 namespace itex {
 typedef Eigen::GpuDevice GPUDevice;
 
@@ -128,20 +129,41 @@ inline void Assign(ResultType* a, ValueType* b) {
   AssignInternal(a, b, typename AssignTrait<ResultType, ValueType>::Tag{});
 }
 
+//namespace internal {
+//template <typename Group>
+//void group_barrier(Group group,
+                   //sycl::memory_scope FenceScope = Group::fence_scope) {
+  //if (FenceScope == sycl::memory_scope::work_group) {
+    //uint32_t flags = static_cast<uint32_t>(
+        //__spv::MemorySemanticsMask::SequentiallyConsistent |
+        //__spv::MemorySemanticsMask::WorkgroupMemory);
+    //__spirv_ControlBarrier(__spv::Scope::Workgroup, __spv::Scope::Workgroup,
+                           //flags);
+  //} else {
+    //sycl::group_barrier(group, FenceScope);
+  //}
+//}
+//
 namespace internal {
 template <typename Group>
-void group_barrier(Group group,
-                   sycl::memory_scope FenceScope = Group::fence_scope) {
+void group_barrier(Group group, sycl::memory_scope FenceScope = Group::fence_scope) {
   if (FenceScope == sycl::memory_scope::work_group) {
-    uint32_t flags = static_cast<uint32_t>(
-        __spv::MemorySemanticsMask::SequentiallyConsistent |
-        __spv::MemorySemanticsMask::WorkgroupMemory);
-    __spirv_ControlBarrier(__spv::Scope::Workgroup, __spv::Scope::Workgroup,
-                           flags);
+#if defined(__SYCL_DEVICE_ONLY__)
+  uint32_t flags = static_cast<uint32_t>(
+      __spv::MemorySemanticsMask::SequentiallyConsistent |
+      __spv::MemorySemanticsMask::WorkgroupMemory);
+  __spirv_ControlBarrier(static_cast<unsigned>(__spv::Scope::Workgroup),
+                         static_cast<unsigned>(__spv::Scope::Workgroup),
+                         static_cast<unsigned>(flags));
+#else
+  sycl::group_barrier(group, FenceScope);
+#endif
   } else {
     sycl::group_barrier(group, FenceScope);
   }
 }
+
+
 
 template <typename Group, typename OutputT, typename Op>
 void reduce_over_group(Group group, __slm__<OutputT> local_data, int group_size,
