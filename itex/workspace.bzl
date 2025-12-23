@@ -60,12 +60,12 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         system_build_file = clean_dep("//third_party/systemlibs:pybind11.BUILD"),
     )
 
-    # main 20240329
-    _ONEDNN_CPU_COMMIT = "242d4d9"
+    # oneDNN v3.7.3 (CPU + GPU unified)
+    _ONEDNN_COMMIT = "34d53b436e652c2e315a66d65bf3c79940c2c530"
 
     new_git_repository(
         name = "onednn_cpu",
-        commit = _ONEDNN_CPU_COMMIT,
+        commit = _ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu.BUILD"),
         verbose = True,
@@ -76,7 +76,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
 
     new_git_repository(
         name = "onednn_cpu_eigen",
-        commit = _ONEDNN_CPU_COMMIT,
+        commit = _ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu_eigen.BUILD"),
         verbose = True,
@@ -179,8 +179,8 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
 
     new_git_repository(
         name = "onednn_gpu",
-        # main
-        commit = "2e7b691",
+        # oneDNN v3.7.3 (match CPU)
+        commit = _ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_gpu.BUILD"),
         verbose = True,

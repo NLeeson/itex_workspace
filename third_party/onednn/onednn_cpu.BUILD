@@ -17,7 +17,11 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine DNNL_SYCL_CUDA": "#undef DNNL_SYCL_CUDA",
     "#cmakedefine DNNL_SYCL_HIP": "#undef DNNL_SYCL_HIP",
     "#cmakedefine DNNL_ENABLE_STACK_CHECKER": "#undef DNNL_ENABLE_STACK_CHECKER",
-    "#cmakedefine DNNL_EXPERIMENTAL": "#undef DNNL_EXPERIMENTAL",
+    "#cmakedefine DNNL_EXPERIMENTAL\n": "#undef DNNL_EXPERIMENTAL\n",
+    "#cmakedefine DNNL_EXPERIMENTAL_SPARSE": "#undef DNNL_EXPERIMENTAL_SPARSE",
+    "#cmakedefine DNNL_EXPERIMENTAL_UKERNEL": "#undef DNNL_EXPERIMENTAL_UKERNEL",
+    "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
+    "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine01 BUILD_TRAINING": "#define BUILD_TRAINING 1",
     "#cmakedefine01 BUILD_INFERENCE": "#define BUILD_INFERENCE 0",
     "#cmakedefine01 BUILD_PRIMITIVE_ALL": "#define BUILD_PRIMITIVE_ALL 1",
@@ -59,6 +63,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 0",
     "#cmakedefine01 BUILD_GEMM_AVX512": "#define BUILD_GEMM_AVX512 0",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
+    "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
 }
 
 _DNNL_RUNTIME_TBB = {
