@@ -27,11 +27,13 @@
 ## Context
 - intel llvm sycl toolchain, icpx/icx compilers, ld.lld linker are set for the environment
 - oneapi 2025.3 vars are set for the environment 
-- device: gpu: adl-p; gpu family: xe-lp
+- device: gpu: adl-p; gpu family: xe-lp; environment var `AOT_CONFIG=adl-p` is set with the aot device
+- `ONEAPI_DEVICE_SELECTOR=level_zero:gpu;*:cpu` environment var is set
+
 
 ## Configuration
 - Use `docs/install/how_to_build.md` for environment prerequisites (Bazel, compiler, oneAPI) before attempting local builds.
 - itex build configuration goal: itex onednn runs code on GPU via SYCL / level zero (ur runtime l0); CPU via THREADPOOL;
 - `.bazelrc` bazel configuration in the build root 
 - `.itex_configure.bazelrc` (generated) configuration after invoking ./configure in the build root
-- `third_party/onednn/*.BUILD` configuration of the oneDNN to be build with itex
+- `third_party/onednn/*.BUILD` files to set the configuration for oneDNN to be build with itex
