@@ -4,10 +4,10 @@
 - `itex/` holds the core extension implementation (devices, graph, kernels, ops, profiler, utils) plus Python bindings under `itex/python/` and build tooling in `itex/tools/`.
 - `test/` contains Python unit tests organized by area (e.g., `test/python/`, `test/sanity/`, `test/tensorflow/`).
 - `docs/` covers design notes, install/build guides, and user documentation; `examples/` provides runnable demos.
-- `third_party/` track external dependencies like onednn
+- `third_party/` tracks external dependencies like onednn
 
 ## Build, Test, and Development Commands
-- `./configure` sets build options (CPU/XPU, compiler paths) before Bazel builds. It generates `.itex_configure.bazelrc` configuration 
+- `./configure` sets build options (CPU/XPU, compiler paths) before Bazel builds. It regenerates `.itex_configure.bazelrc` configuration 
 - `bazel build -c opt //itex/tools/pip_package:build_pip_package --verbose_failures` is the base build command we invoke with a configuration
 - `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --verbose_failures` builds configuration defined as xpu
 - `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --define=build_with_onednn_graph=true --define=build_with_graph_compiler=true --verbose_failures` builds configuration defined as xpu with the defined extras for onednn graph mode and onednn graph compiler backend
@@ -18,10 +18,6 @@
 - Python: use `pylint` with `.pylintrc` at repo root (`pylint --rcfile=.pylintrc myfile.py`).
 - C++: format with `clang-format-12 -i -style=file <file>` and lint with `cpplint --filter=-legal/copyright --exclude=./third_party --recursive ./`.
 - Bazel: format `BUILD`/`.bzl` files with `buildifier`.
-
-## Testing Guidelines
-- Tests are Python-first; keep new tests under `test/` with clear, descriptive filenames (match existing folder conventions).
-- Validate fixes with targeted tests and run the full suite for broad changes.
 
 ## Commit & Pull Request Guidelines
 - Commit subjects are short, imperative, and capitalized; optional tags like `[FIX]` appear, and PR/issue numbers are often appended in parentheses (e.g., `Fix oneDNN build (#2748)`).
@@ -35,5 +31,7 @@
 
 ## Configuration
 - Use `docs/install/how_to_build.md` for environment prerequisites (Bazel, compiler, oneAPI) before attempting local builds.
-- `third_party/onednn` contains files for configuring the onednn that itex builds
 - itex build configuration goal: itex onednn runs code on GPU via SYCL / level zero (ur runtime l0); CPU via THREADPOOL;
+- `.bazelrc` bazel configuration in the build root 
+- `.itex_configure.bazelrc` (generated) configuration after invoking ./configure in the build root
+- `third_party/onednn/*.BUILD` configuration of the oneDNN to be build with itex
