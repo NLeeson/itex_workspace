@@ -4,15 +4,14 @@
 - `itex/` holds the core extension implementation (devices, graph, kernels, ops, profiler, utils) plus Python bindings under `itex/python/` and build tooling in `itex/tools/`.
 - `test/` contains Python unit tests organized by area (e.g., `test/python/`, `test/sanity/`, `test/tensorflow/`).
 - `docs/` covers design notes, install/build guides, and user documentation; `examples/` provides runnable demos.
-- `third_party/` and `third-party-programs/` track external dependencies and licenses.
+- `third_party/` track external dependencies like onednn
 
 ## Build, Test, and Development Commands
-- `./configure` sets build options (CPU/XPU, compiler paths) before Bazel builds.
-- `bazel build -c opt --config=cpu //itex/tools/pip_package:build_pip_package` builds a CPU wheel artifact.
-- `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package` builds an XPU wheel artifact.
+- `./configure` sets build options (CPU/XPU, compiler paths) before Bazel builds. It generates `.itex_configure.bazelrc` configuration 
+- `bazel build -c opt //itex/tools/pip_package:build_pip_package --verbose_failures` is the base build command we invoke with a configuration
+- `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --verbose_failures` builds configuration defined as xpu
+- `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --define=build_with_onednn_graph=true --define=build_with_graph_compiler=true --verbose_failures` builds configuration defined as xpu with the defined extras for onednn graph mode and onednn graph compiler backend
 - `bazel-bin/itex/tools/pip_package/build_pip_package WHL/` packages the wheel into `WHL/`.
-- `python <path_to_test.py>` runs a single Python unit test.
-- `for ut in $(find test -name "*.py"); do python $ut; done` runs the full Python test suite.
 
 ## Coding Style & Naming Conventions
 - Follow TensorFlow style guides for Python, C++, and documentation.
@@ -29,6 +28,12 @@
 - Open or reference an issue for bugs/features; significant changes require the RFC process before implementation.
 - PRs should describe the change, link relevant issues, and confirm that the build and examples/tests pass when applicable.
 
-## Security & Configuration Tips
-- Review `SECURITY.md` for vulnerability reporting guidance.
+## Context
+- intel llvm sycl toolchain, icpx/icx compilers, ld.lld linker are set for the environment
+- oneapi 2025.3 vars are set for the environment 
+- device: gpu: adl-p; gpu family: xe-lp
+
+## Configuration
 - Use `docs/install/how_to_build.md` for environment prerequisites (Bazel, compiler, oneAPI) before attempting local builds.
+- `third_party/onednn` contains files for configuring the onednn that itex builds
+- itex build configuration goal: itex onednn runs code on GPU via SYCL / level zero (ur runtime l0); CPU via THREADPOOL;
