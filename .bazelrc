@@ -33,6 +33,17 @@ build:xpu --define=tensorflow_mkldnn_contraction_kernel=0
 build:xpu --repo_env TF_NEED_SYCL=1
 build:xpu --repo_env TF_NEED_MKL=1
 
+# This config option is used for unified CPU + GPU (XPU) backend.
+build:xpu_full --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
+build:xpu_full --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
+build:xpu_full --define=build_as_xpu=true
+build:xpu_full --define=build_with_onednn=true
+build:xpu_full --define=build_with_onednn_graph=true
+build:xpu_full --define=build_with_graph_compiler=true
+build:xpu_full --define=tensorflow_mkldnn_contraction_kernel=0
+build:xpu_full --repo_env TF_NEED_SYCL=1
+build:xpu_full --repo_env TF_NEED_MKL=1
+
 # This config option is used for XPU backend (CPU + GPU). (Disabled)
 # build:xpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
 # build:xpu --define=using_xetla=true
