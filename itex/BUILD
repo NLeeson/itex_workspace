@@ -75,6 +75,30 @@ selects.config_setting_group(
 )
 
 selects.config_setting_group(
+    name = "cpu_or_xpu_build",
+    match_any = [
+        ":cpu_build",
+        ":xpu_build",
+    ],
+)
+
+selects.config_setting_group(
+    name = "gpu_backend_build",
+    match_any = [
+        ":if_using_sycl",
+        ":xpu_build",
+    ],
+)
+
+selects.config_setting_group(
+    name = "cpu_backend_build",
+    match_all = [
+        "//third_party/onednn:build_with_onednn",
+        ":cpu_or_xpu_build",
+    ],
+)
+
+selects.config_setting_group(
     name = "gpu_with_nextpluggable_device_build",
     match_all = [
         "@intel_extension_for_tensorflow//itex:gpu_build",
@@ -160,6 +184,11 @@ cc_binary(
     name = "libitex_cpu.so",
     srcs = [
         "//itex/core/wrapper:itex_cpu_wrapper",
+    ],
+    copts = [
+        "-UEIGEN_USE_DPCPP",
+        "-UEIGEN_USE_DPCPP_BUILD",
+        "-UEIGEN_USE_DPCPP_USM",
     ],
     linkopts = ["-Wl,-rpath,$$ORIGIN/../intel_extension_for_tensorflow"],
     linkshared = True,

@@ -57,14 +57,14 @@ def if_cc_threadpool_build(if_true, if_false = []):
     })
 
 def if_gpu_backend(if_true, if_false = []):
-    return selects.with_or({
-        ("@itex_local_config_sycl//sycl:using_sycl", "@intel_extension_for_tensorflow//itex:xpu_build"): if_true,
+    return select({
+        "@intel_extension_for_tensorflow//itex:gpu_backend_build": if_true,
         "//conditions:default": if_false,
     })
 
 def if_cpu_backend(if_true, if_false = []):
-    return selects.with_or({
-        ("@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn", "@intel_extension_for_tensorflow//itex:xpu_build"): if_true,
+    return select({
+        "@intel_extension_for_tensorflow//itex:cpu_backend_build": if_true,
         "//conditions:default": if_false,
     })
 
@@ -93,7 +93,7 @@ def cpu_copts():
                 "-march=native",
             ],
             "//conditions:default": [],
-        }) + ["-qopenmp"]
+        }) + ["-fopenmp"]
     )
 
 def _copt_transition_impl(settings, attr):
