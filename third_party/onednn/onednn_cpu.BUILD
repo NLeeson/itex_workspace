@@ -216,6 +216,7 @@ cc_library(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/sycl/**",
             "src/cpu/rv64/**",
             "src/graph/**",
         ],
