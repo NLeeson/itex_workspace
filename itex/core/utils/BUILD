@@ -201,6 +201,11 @@ cc_library(
         "integral_types.h",
         "platform.h",
     ],
+    copts = [
+        "-UEIGEN_USE_DPCPP",
+        "-UEIGEN_USE_DPCPP_BUILD",
+        "-UEIGEN_USE_DPCPP_USM",
+    ],
     visibility = ["//visibility:public"],
     deps = [
         ":logging",
