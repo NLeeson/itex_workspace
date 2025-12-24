@@ -16,8 +16,11 @@
 # limitations under the License.
 # ==============================================================================
 
-onednn_gpu_path=$(find bazel-out/k8-opt-ST-*/bin/external/onednn_gpu/include/oneapi/dnnl/ -name dnnl_version.h | head -1)
-onednn_cpu_path=$(find bazel-out/k8-opt-ST-*/bin/external/onednn_cpu/include/oneapi/dnnl/ -name dnnl_version.h | head -1)
+onednn_gpu_path=$(find bazel-out/k8-opt*/bin/external/onednn_gpu/include/oneapi/dnnl/ -name dnnl_version.h 2>/dev/null | head -1)
+onednn_cpu_path=$(find bazel-out/k8-opt*/bin/external/onednn_cpu/include/oneapi/dnnl/ -name dnnl_version.h 2>/dev/null | head -1)
+if [ -z "${onednn_cpu_path}" ]; then
+  onednn_cpu_path=$(find bazel-out/k8-opt*/bin/external/onednn_cpu_eigen/include/oneapi/dnnl/ -name dnnl_version.h 2>/dev/null | head -1)
+fi
 
 itex_tmp_folder_name="itex.tmp"
 lib_tmp_folder_name="lib.tmp"

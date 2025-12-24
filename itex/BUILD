@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_binary", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "cc_binary", "if_cpu_backend", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 load("@bazel_skylib//lib:selects.bzl", "selects")
@@ -212,13 +212,10 @@ cc_binary(
     linkshared = True,
     set_target = "cpu_avx512_backend",
     visibility = ["//visibility:public"],
-    deps = if_sycl(
-        [],
-        [
-            "//itex/core/graph:xpu_graph",
-            "//itex/core/kernels:xpu_kernel",
-        ],
-    ) + [
+    deps = if_cpu_backend([
+        "//itex/core/graph:xpu_graph",
+        "//itex/core/kernels:xpu_kernel",
+    ]) + [
         "//itex/core/kernels:libitex_common",
         "@local_config_tf//:_pywrap_tensorflow_internal",
     ],
@@ -233,13 +230,10 @@ cc_binary(
     linkshared = True,
     set_target = "cpu_avx2_backend",
     visibility = ["//visibility:public"],
-    deps = if_sycl(
-        [],
-        [
-            "//itex/core/graph:xpu_graph",
-            "//itex/core/kernels:xpu_kernel",
-        ],
-    ) + [
+    deps = if_cpu_backend([
+        "//itex/core/graph:xpu_graph",
+        "//itex/core/kernels:xpu_kernel",
+    ]) + [
         "//itex/core/kernels:libitex_common",
         "@local_config_tf//:_pywrap_tensorflow_internal",
     ],

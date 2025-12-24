@@ -69,10 +69,12 @@ for filename in filenames:
 if is_cpu and not is_gpu:
   _VERSION = _VERSION + ".0"
 elif not is_cpu and is_gpu:
+  _VERSION = _VERSION + ".1"
+elif is_cpu and is_gpu:
+  # Unified CPU+GPU build (XPU)
   _VERSION = _VERSION + ".2"
 else:
-  raise Exception("There are no .so files in the folder of \
-                   tensorflow-plugins, please check it.")
+  raise Exception("No CPU/GPU .so files found in tensorflow-plugins.")
 
 if is_rc:
   _VERSION = _VERSION + "rc" + _VERSION_EXT
