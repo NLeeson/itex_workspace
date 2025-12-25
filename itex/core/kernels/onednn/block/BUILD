@@ -1,5 +1,4 @@
 load("//itex:itex.bzl", "itex_xpu_library", "tf_copts")
-load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 
 # List all kernels here.
 itex_xpu_library(
@@ -34,9 +33,10 @@ itex_xpu_library(
         ":slice_op",
         ":softmax_op",
         ":transpose_op",
-    ] + if_sycl([
-        ":cwise_ops_common",
-    ]),
+    ] + select({
+        "//itex:gpu_backend_build": [":cwise_ops_common"],
+        "//conditions:default": [],
+    }),
     alwayslink = True,
 )
 
