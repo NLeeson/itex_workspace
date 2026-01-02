@@ -16,8 +16,30 @@ limitations under the License.
 #ifndef ITEX_CORE_DEVICES_GPU_GPU_INFO_H_
 #define ITEX_CORE_DEVICES_GPU_GPU_INFO_H_
 
-#include "third_party/build_option/sycl/runtime/itex_gpu_runtime.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
+#include "third_party/eigen3/Eigen/Core"
+#include "third_party/build_option/sycl/runtime/eigen_itex_gpu_runtime.h"
+
+#ifndef INTEL_CPU_ONLY
+#ifndef EIGEN_CXX11_TENSOR_TENSOR_DEVICE_GPU_H
+#if !defined(EIGEN_USE_GPU)
+#define ITEX_GPU_INFO_EIGEN_USE_GPU_WAS_UNDEFINED
+#define EIGEN_USE_GPU
+#endif
+#if !defined(EIGEN_USE_DPCPP)
+#define ITEX_GPU_INFO_EIGEN_USE_DPCPP_WAS_UNDEFINED
+#define EIGEN_USE_DPCPP
+#endif
+#include "unsupported/Eigen/CXX11/Tensor"
+#ifdef ITEX_GPU_INFO_EIGEN_USE_DPCPP_WAS_UNDEFINED
+#undef EIGEN_USE_DPCPP
+#undef ITEX_GPU_INFO_EIGEN_USE_DPCPP_WAS_UNDEFINED
+#endif
+#ifdef ITEX_GPU_INFO_EIGEN_USE_GPU_WAS_UNDEFINED
+#undef EIGEN_USE_GPU
+#undef ITEX_GPU_INFO_EIGEN_USE_GPU_WAS_UNDEFINED
+#endif
+#endif  // EIGEN_CXX11_TENSOR_TENSOR_DEVICE_GPU_H
+#endif  // INTEL_CPU_ONLY
 
 namespace itex {
 

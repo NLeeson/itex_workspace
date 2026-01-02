@@ -1,0 +1,13 @@
+diff --git a/src/common/c_types_map.hpp b/src/common/c_types_map.hpp
+index 8b4a193b92..2f1e4ac77e 100644
+--- a/src/common/c_types_map.hpp
++++ b/src/common/c_types_map.hpp
+@@ -258,6 +258,4 @@
+ // Internal only data kinds.
+-const profiling_data_kind_t internal_only_start
+-        = (profiling_data_kind_t)(1 << 8);
+-const profiling_data_kind_t cycles
+-        = (profiling_data_kind_t)(internal_only_start + 1);
++constexpr int internal_only_start = (1 << 8);
++constexpr int cycles = internal_only_start + 1;
+ } // namespace profiling_data_kind

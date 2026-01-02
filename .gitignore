@@ -1,8 +1,6 @@
 .DS_Store
 .ipynb_checkpoints
 node_modules
-/.bazelrc.user
-/.itex_configure.bazelrc
 /bazel-*
 /bazel_pip
 /itex/tools/python_bin_path.sh
@@ -17,3 +15,18 @@ __pycache__
 [Bb]uild/
 *.whl
 build_tmp
+
+# Python / pip build artifacts
+.pip_src_test/
+*.so
+*.a
+*.o
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Build directories
+build/
+dist/
+

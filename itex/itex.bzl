@@ -69,23 +69,21 @@ def if_cpu_backend(if_true, if_false = []):
     })
 
 def cpu_copts():
-    # CPU default build opts: "-DINTEL_CPU_ONLY", "-mfma", "-O3", "-mavx", "-mavx2"
-    # CPU avx512 build opts: "-mavx512f", "-mavx512pf", "-mavx512cd", "-mavx512bw", "-march=skylake-avx512", "-mavx512dq"
-    # CPU CC build opts: "-march=native"
+    # Alder Lake-P (and many other client CPUs) do not expose AVX-512, so this repository
+    # should avoid hardcoding AVX-512 sub-ISA flags. For a build-and-run-on-the-same-host
+    # workflow, prefer native tuning.
     return (
         select({
             "@intel_extension_for_tensorflow//itex:cpu_build": [
                 "-DINTEL_CPU_ONLY",
+                "-march=native",
             ],
             "//conditions:default": [],
         }) + select({
+            # Kept for compatibility with upstream configs, but mapped to native tuning
+            # rather than AVX-512.
             "@intel_extension_for_tensorflow//itex:cpu_avx512_build": [
-                "-mavx512f",
-                "-mavx512pf",
-                "-mavx512cd",
-                "-mavx512bw",
-                "-march=skylake-avx512",
-                "-mavx512dq",
+                "-march=native",
             ],
             "//conditions:default": [],
         }) + select({
@@ -95,6 +93,7 @@ def cpu_copts():
             "//conditions:default": [],
         }) + ["-qopenmp"]
     )
+
 
 def _copt_transition_impl(settings, attr):
     _ignore = settings

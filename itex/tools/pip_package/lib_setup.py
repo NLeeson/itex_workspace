@@ -68,8 +68,10 @@ for filename in filenames:
     is_gpu = True
 if is_cpu and not is_gpu:
   _VERSION = _VERSION + ".0"
-elif not is_cpu and is_gpu:
+elif is_gpu and not is_cpu:
   _VERSION = _VERSION + ".2"
+elif is_cpu and is_gpu:
+  _VERSION = _VERSION + ".1"
 else:
   raise Exception("There are no .so files in the folder of \
                    tensorflow-plugins, please check it.")

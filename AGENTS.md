@@ -1,39 +1,298 @@
-# Repository Guidelines
+# AGENTS.md
 
-## Project Structure & Module Organization
-- `itex/` holds the core extension implementation (devices, graph, kernels, ops, profiler, utils) plus Python bindings under `itex/python/` and build tooling in `itex/tools/`.
-- `test/` contains Python unit tests organized by area (e.g., `test/python/`, `test/sanity/`, `test/tensorflow/`).
-- `docs/` covers design notes, install/build guides, and user documentation; `examples/` provides runnable demos.
-- `third_party/` tracks external dependencies like onednn
+## Intel Extension for TensorFlow (ITEX) — oneDNN 3.7.3 Build
 
-## Build, Test, and Development Commands
-- `./configure` sets build options (CPU/XPU, compiler paths) before Bazel builds. It regenerates `.itex_configure.bazelrc` configuration 
-- `bazel build -c opt //itex/tools/pip_package:build_pip_package --verbose_failures` is the base build command we invoke with a configuration
-- `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --verbose_failures` builds configuration defined as xpu
-- `bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --define=build_with_onednn_graph=true --define=build_with_graph_compiler=true --verbose_failures` builds configuration defined as xpu with the defined extras for onednn graph mode and onednn graph compiler backend
-- `bazel-bin/itex/tools/pip_package/build_pip_package WHL/` packages the wheel into `WHL/`.
+This document provides **project-specific instructions for AI coding agents** operating in this repository.
 
-## Coding Style & Naming Conventions
-- Follow TensorFlow style guides for Python, C++, and documentation.
-- Python: use `pylint` with `.pylintrc` at repo root (`pylint --rcfile=.pylintrc myfile.py`).
-- C++: format with `clang-format-12 -i -style=file <file>` and lint with `cpplint --filter=-legal/copyright --exclude=./third_party --recursive ./`.
-- Bazel: format `BUILD`/`.bzl` files with `buildifier`.
+Treat it as the authoritative source for:
+- **Objectives:** what the project is trying to achieve
+- **Constraints:** what must not change or must not be violated
+- **Verification:** how to build, validate, and report results
 
-## Commit & Pull Request Guidelines
-- Commit subjects are short, imperative, and capitalized; optional tags like `[FIX]` appear, and PR/issue numbers are often appended in parentheses (e.g., `Fix oneDNN build (#2748)`).
-- Open or reference an issue for bugs/features; significant changes require the RFC process before implementation.
-- PRs should describe the change, link relevant issues, and confirm that the build and examples/tests pass when applicable.
+Prioritize **minimal diffs**, **reproducible builds**, and **clearly scoped changes**.
 
-## Context
-- intel llvm sycl toolchain, icpx/icx compilers, ld.lld linker are set for the environment
-- oneapi 2025.3 vars are set for the environment 
-- device: gpu: adl-p; gpu family: xe-lp; environment var `AOT_CONFIG=adl-p` is set with the aot device
-- `ONEAPI_DEVICE_SELECTOR=level_zero:gpu;*:cpu` environment var is set
+---
+
+## Quick start
+
+1) Read the **Suggested reading order** in “Read-first map” to understand oneDNN + SYCL build wiring.
+2) Build the wheel using the **reference Bazel command** in “Build and resource constraints” (capture full output).
+3) Emit the wheel, install it, then run the **Definition of success** checklist.
+4) Report results with exact commands and relevant log excerpts.
+
+---
+
+## Mission
+
+### Objective: unify oneDNN across CPU + GPU on **v3.7.3**
+
+#### Current behavior (problem)
+After installing the wheel, importing `intel_extension_for_tensorflow` initializes **multiple oneDNN versions**:
+- CPU path: oneDNN **v3.3.4**
+- GPU path: oneDNN **v3.6.0**
+
+#### Target behavior (goal)
+Build and package ITEX so that CPU and GPU both load **oneDNN v3.7.3**, while preserving:
+- **CPU runtime:** `THREADPOOL` (TensorFlow threadpool integration)
+- **GPU runtime:** `SYCL` (SYCL → Level Zero)
+- **Graph API:** enabled and usable on GPU
+- **Graph compiler backend:** disabled (incompatible with `THREADPOOL` + `SYCL`)
+
+Primary work surface: **oneDNN integration**, **Bazel rules**
+
+---
+
+## Constraints
+
+### Must
+
+- Compile with Intel:
+  - `icx` / `icpx` from: `/opt/intel/oneapi/compiler/2025.3/bin/`
+- Link with LLVM lld provided by the same toolchain:
+  - `ld.lld` at: `/opt/intel/oneapi/compiler/2025.3/bin/compiler/ld.lld`
+- Use the binutils from the Intel LLVM toolchain (prefer `llvm-*`, not GNU `ar/nm`):
+  - `llvm-ar`, `llvm-nm`, `llvm-ranlib`, `llvm-objdump`, `llvm-strip`, `llvm-readelf`
+  - Expected under: `/opt/intel/oneapi/compiler/2025.3/bin/compiler/`
+
+- Preserve intended runtime behavior:
+  - CPU runtime: `THREADPOOL`
+  - GPU runtime: `SYCL`
+  - Graph API: enabled
+  - Graph compiler backend: disabled
+
+- Any change affecting ABI, runtime loading, build flags, or wheel layout must include:
+  - a short rationale,
+  - the exact build commands used,
+  - verification steps and relevant log excerpts.
+
+- Ensure correctness and utilization of the target system:
+  - GPU/SYCL settings for Gen12 Xe-LP.
+  - CPU codegen may use `-march=native` (builds are performed on the target system; no redistribution).
+
+- CPU compilation model:
+  - `-march=native` is used for general compilation and implies AVX2 on the target CPU.
+  - Where ISA must be constrained explicitly (e.g., oneDNN), AVX2 is passed to limit generated features to AVX2-compliant instructions.
 
 
-## Configuration
-- Use `docs/install/how_to_build.md` for environment prerequisites (Bazel, compiler, oneAPI) before attempting local builds.
-- itex build configuration goal: itex onednn runs code on GPU via SYCL / level zero (ur runtime l0); CPU via THREADPOOL;
-- `.bazelrc` bazel configuration in the build root 
-- `.itex_configure.bazelrc` (generated) configuration after invoking ./configure in the build root
-- `third_party/onednn/*.BUILD` files to set the configuration for oneDNN to be build with itex
+### Must not
+
+- Do **not** enable the graph compiler backend.
+- Do **not** introduce alternative GPU offloading models or force non-SYCL execution paths (e.g., OpenCL-only runtimes).
+- Do **not** introduce runtime behavior that:
+  - initializes different oneDNN versions, or
+  - silently falls back to an older oneDNN version.
+- Do **not** use any AVX-512 assumptions.
+- Do **not** incorporate unsupported ISA extensions into the build.
+
+
+---
+
+## Read-first map
+
+Before changing build rules, review the items below to understand how oneDNN is configured, built, and packaged into the wheel.
+Target platform: bare-metal Intel Alder Lake-P (ADL-P) with an x86-64 CPU supporting AVX2/FMA/AVX-VNNI (no AVX-512) and an integrated Intel Xe-LP Gen12 iGPU.
+Builds are performed on the target system for that target system (no redistribution). Prefer native settings; avoid AVX-512 assumptions.
+
+### Build structure orientation (must read before edits)
+
+Read these files first (in order). Do not edit build rules until you have done this:
+
+1) `./itex/workspace.bzl` — **oneDNN version pinning** and external repo wiring (`onednn_cpu`, `onednn_gpu`, `onednn_cpu_eigen`, `sycl_configure`).
+2) `./third_party/onednn/build_defs.bzl` — **CPU/GPU oneDNN dependency selection** (`onednn_deps`, `onednn_graph_deps`) and graph-compiler toggles.
+3) `./third_party/build_option/sycl_configure.bzl` — **SYCL toolchain autoconfig** and GPU enablement gates.
+4) `./itex/itex.bzl` — **backend build selectors** and compile/link flags that drive CPU/GPU behavior.
+5) `./itex/BUILD` — build rules
+6) `./third_party/onednn/onednn.bzl` — **oneDNN genrules** (GPU kernel list + version header).
+7) `./itex/python/build_defs.bzl` — **pybind linkopts/rpath** and SYCL link flags that affect runtime loading.
+8) `./itex/core/utils/build_config.bzl` — **build rule wrappers** used across targets, influences compilation behavior.
+
+### Suggested reading order (fast convergence)
+
+1) **Configuration entrypoints**
+   - `./.bazelrc` and `./.itex_configure.bazelrc` — baseline and generated build settings that influence oneDNN/SYCL.
+
+2) **SYCL enablement and toolchain wiring**
+   - `./third_party/build_option/sycl_configure.bzl` — SYCL toolchain/options wiring used by the GPU path.
+
+3) **oneDNN Bazel integration (targets, flags, version pinning)**
+   - `./third_party/onednn/onednn.bzl` — oneDNN Bazel targets and integration surface.
+   - `./third_party/onednn/build_defs.bzl` — shared oneDNN build macros/options.
+
+4) **Concrete oneDNN targets and link topology**
+   - `./third_party/onednn/onednn_cpu.BUILD`, `./third_party/onednn/onednn_gpu.BUILD`, `./third_party/onednn/onednn_cpu_eigen.BUILD` — CPU/GPU target definitions and dependencies.
+
+5) **Wheel packaging and runtime loading**
+   - `itex/tools/pip_package/` and `itex/python/` — determines which `.so` artifacts ship, how they are located, and how load order/versioning behaves at import.
+
+### Inventory
+
+#### Bazel definitions (core build logic)
+- `./third_party/common.bzl`
+- `./third_party/onednn/onednn.bzl` — oneDNN Bazel targets and integration surface
+- `./third_party/onednn/build_defs.bzl` — oneDNN build macros/options
+- `./third_party/build_option/sycl_configure.bzl` — SYCL toolchain/options wiring
+- `./itex/itex.bzl`
+- `./itex/BUILD`
+- `./itex/python/build_defs.bzl`
+- `./itex/workspace.bzl`
+- `./itex/workspace1.bzl`
+- `./itex/tf_configure.bzl`
+- `./itex/core/utils/build_config.bzl`
+
+#### BUILD files (oneDNN targets)
+- `./third_party/onednn/onednn_gpu.BUILD`
+- `./third_party/onednn/onednn_cpu_eigen.BUILD`
+- `./third_party/onednn/onednn_cpu.BUILD`
+
+#### Bazel build configurations (repo-wide and generated configuration)
+- `./.bazelrc` — baseline configs/flags
+- `./.bazelrc.user` — developer-local overrides (treat as non-authoritative)
+- `./.itex_configure.bazelrc` — generated configuration used by `--config=...`
+
+### Additional high-signal directories
+- `itex/core/devices/**`
+- `itex/tools/pip_package/` (wheel assembly; shared library selection; RPATH / runtime loading)
+- `itex/python/` (module initialization path; logging/version hooks)
+
+---
+
+## Build and resource constraints
+
+### Primary build target (wheel)
+
+Use the following command as the reference build:
+
+```bash
+bazel build -c fastbuild \
+  --jobs=8 \
+  --verbose_failures \
+  --config=xpu \
+  //itex/tools/pip_package:build_pip_package
+```
+
+**Requirements:**
+- Target: `//itex/tools/pip_package:build_pip_package`
+- Resource envelope:
+  - Memory: ~**10 GB**
+  - Parallelism: **8** jobs
+
+Optional strict local reproducibility (append to the `bazel build` command above):
+
+```bash
+--local_cpu_resources=8 \
+--local_ram_resources=10240
+```
+
+Do not raise resource usage unless unavoidable and explicitly justified.
+
+### Where the wheel is emitted
+
+- `bazel build` produces a wheel-builder executable at:
+  - `bazel-bin/itex/tools/pip_package/build_pip_package`
+- Run that executable with an output directory to write the wheel:
+
+```bash
+mkdir -p /tmp/itex_wheel
+./bazel-bin/itex/tools/pip_package/build_pip_package /tmp/itex_wheel
+ls -1 /tmp/itex_wheel/*.whl
+```
+
+### Canonical install command
+
+```bash
+python -m pip install --force-reinstall --no-deps /tmp/itex_wheel/<wheel>.whl
+```
+
+---
+
+## oneDNN v3.7.3 configuration requirements
+
+oneDNN must match the intent below (actual enforcement may occur via Bazel rules rather than direct CMake flags):
+
+- Graph API: **ON**
+- Graph dump: optional (**ON** is acceptable for debugging)
+- Graph compiler backend: **OFF**
+- Primitive cache: **ON**
+- CPU ISA cap: **AVX2-class** (no AVX-512)
+- GPU ISA cap: **XELP**
+- GEMM kernels ISA: **AVX2-class**
+- CPU runtime: **THREADPOOL**
+- GPU runtime: **SYCL**
+- GPU vendor: **INTEL**
+
+Conceptual oneDNN options (intent only):
+
+```text
+ONEDNN_BUILD_GRAPH=ON
+ONEDNN_ENABLE_GRAPH_DUMP=ON (optional)
+ONEDNN_EXPERIMENTAL_GRAPH_COMPILER_BACKEND=OFF
+ONEDNN_ENABLE_PRIMITIVE_CACHE=ON
+ONEDNN_ENABLE_PRIMITIVE_CPU_ISA=AVX2
+ONEDNN_ENABLE_PRIMITIVE_GPU_ISA=XELP
+ONEDNN_ENABLE_GEMM_KERNELS_ISA=AVX2
+ONEDNN_CPU_RUNTIME=THREADPOOL
+ONEDNN_GPU_RUNTIME=SYCL
+ONEDNN_GPU_VENDOR=INTEL
+```
+
+---
+
+## Definition of success
+
+### 1) Runtime behavior
+
+- Importing `intel_extension_for_tensorflow` initializes **oneDNN v3.7.3** for both CPU and GPU paths.
+- Enable verbose logging and confirm only **oneDNN v3.7.3** is initialized (no v3.3.4 / v3.6.0). Check the module init output against the build requirements:
+
+```bash
+ITEX_VERBOSE=1 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python -c "import intel_extension_for_tensorflow as itex; import tensorflow as tf; print('ok')"
+```
+
+### 2) CPU + GPU smoke execution
+
+Execute at least one CPU op and one GPU op and confirm GPU dispatch is real (no silent CPU fallback).
+
+Template (adjust device naming to match repo conventions, e.g. `/XPU:0` vs `/GPU:0`):
+
+```bash
+ITEX_VERBOSE=1 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python - <<'PY'
+import tensorflow as tf
+import intel_extension_for_tensorflow as itex
+
+devices = tf.config.list_physical_devices()
+print('Devices:', devices)
+
+has_accel = any(d.device_type in ('GPU', 'XPU') for d in devices)
+if not has_accel:
+    raise SystemExit('No GPU/XPU device detected; cannot validate SYCL path.')
+
+a = tf.random.uniform([1024, 1024])
+b = tf.random.uniform([1024, 1024])
+
+# CPU op
+cpu_out = tf.matmul(a, b)
+print('CPU matmul device:', cpu_out.device)
+
+# GPU/XPU op
+try:
+    with tf.device('/XPU:0'):
+        accel_out = tf.matmul(a, b)
+except Exception:
+    with tf.device('/GPU:0'):
+        accel_out = tf.matmul(a, b)
+
+print('Accel matmul device:', accel_out.device)
+
+print('smoke ok')
+PY
+```
+
+---
+
+## Recommended agent workflow
+
+- Break work into **small, focused steps**.
+- Start by mapping **where** oneDNN is built and **how** CPU/GPU link against it (see “Read-first map”).
+- If a change impacts ABI/runtime loading/wheel layout, state the plan and expected blast radius before editing build files.
+
+---

@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_binary", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "cc_binary", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 load("@bazel_skylib//lib:selects.bzl", "selects")
@@ -161,6 +161,12 @@ cc_binary(
     srcs = [
         "//itex/core/wrapper:itex_cpu_wrapper",
     ],
+    copts = [
+        "-UEIGEN_USE_DPCPP",
+        "-UEIGEN_USE_DPCPP_BUILD",
+        "-UEIGEN_USE_DPCPP_USM",
+        "-UEIGEN_USE_GPU",
+    ],
     linkopts = ["-Wl,-rpath,$$ORIGIN/../intel_extension_for_tensorflow"],
     linkshared = True,
     set_target = "dummy",
@@ -183,13 +189,10 @@ cc_binary(
     linkshared = True,
     set_target = "cpu_avx512_backend",
     visibility = ["//visibility:public"],
-    deps = if_sycl(
-        [],
-        [
-            "//itex/core/graph:xpu_graph",
-            "//itex/core/kernels:xpu_kernel",
-        ],
-    ) + [
+    deps = [
+        "//itex/core/graph:xpu_graph",
+        "//itex/core/kernels:xpu_kernel",
+    ] + [
         "//itex/core/kernels:libitex_common",
         "@local_config_tf//:_pywrap_tensorflow_internal",
     ],
@@ -204,13 +207,10 @@ cc_binary(
     linkshared = True,
     set_target = "cpu_avx2_backend",
     visibility = ["//visibility:public"],
-    deps = if_sycl(
-        [],
-        [
-            "//itex/core/graph:xpu_graph",
-            "//itex/core/kernels:xpu_kernel",
-        ],
-    ) + [
+    deps = [
+        "//itex/core/graph:xpu_graph",
+        "//itex/core/kernels:xpu_kernel",
+    ] + [
         "//itex/core/kernels:libitex_common",
         "@local_config_tf//:_pywrap_tensorflow_internal",
     ],
@@ -258,15 +258,12 @@ itex_xpu_library(
         "//itex/core/utils/onednn:onednn_layout_util",
         "//third_party/eigen3",
         "@local_config_tf//:tf_header_lib",
-    ] + if_sycl(
+    ] + if_gpu_build(
         [
             "//itex/core/devices/gpu:eigen_stream_device",
+            "//itex/core/devices:gpu_device_selector",
         ],
-    ) + if_using_nextpluggable_device(
-        ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
-        [
-            "//itex/core/devices/gpu:gpu_device_impl",
-        ],
+        [],
     ),
     alwayslink = True,
 )

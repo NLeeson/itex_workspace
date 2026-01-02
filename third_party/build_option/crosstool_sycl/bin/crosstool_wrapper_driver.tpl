@@ -27,6 +27,18 @@ os.environ["TMP"] = TMPDIR
 if not os.path.exists(TMPDIR):
   os.makedirs(TMPDIR, exist_ok=True)
 
+_sycl_lib_paths = [
+    "%{SYCL_ROOT_DIR}/lib",
+    "%{SYCL_ROOT_DIR}/compiler/lib",
+    "%{SYCL_ROOT_DIR}/compiler/lib/intel64_lin",
+]
+_ld_library_path = os.environ.get("LD_LIBRARY_PATH", "")
+_sycl_ld = ":".join([p for p in _sycl_lib_paths if p])
+if _ld_library_path:
+  os.environ["LD_LIBRARY_PATH"] = _sycl_ld + ":" + _ld_library_path
+else:
+  os.environ["LD_LIBRARY_PATH"] = _sycl_ld
+
 def check_is_intel_llvm(path):
   cmd = path + " -dM -E -x c /dev/null | grep '__INTEL_LLVM_COMPILER'"
   check_result = subprocess.getoutput(cmd)
@@ -202,6 +214,16 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     if cpu_only:
       flags.append('-DINTEL_CPU_ONLY')
     flags = [f for f in flags if is_valid_flag(f, True, False)]
+    # icx/icpx do not accept -mavx512pf; drop it for Intel LLVM hosts.
+    host_basename = os.path.basename(HOST_COMPILER_PATH)
+    if host_basename in ("icx", "icpx", "dpcpp"):
+      flags = [f for f in flags if f != "-mavx512pf"]
+      # Ensure C sources are compiled as C when using icpx.
+      if host_basename == "icpx":
+        has_c = any(f.endswith(".c") for f in flags)
+        has_cpp = any(f.endswith(ext) for f in flags for ext in (".cc", ".cpp", ".cxx", ".C"))
+        if has_c and not has_cpp and "-x" not in flags:
+          flags = ["-x", "c"] + flags
     for i, f in enumerate(flags):
       if (i < len(flags) - 1)  and (f == '-isystem' or f == '-iquote'):
         while(flags[i+1].startswith('-')):

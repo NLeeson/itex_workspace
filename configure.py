@@ -283,6 +283,9 @@ def setup_python(environ_cp):
       python_lib_path = default_python_lib_path
       checked_python_lib_path = check_safe_python_lib_path(python_lib_path)
     environ_cp['PYTHON_LIB_PATH'] = checked_python_lib_path
+  else:
+    checked_python_lib_path = check_safe_python_lib_path(python_lib_path)
+    environ_cp['PYTHON_LIB_PATH'] = checked_python_lib_path
 
   _ = get_python_major_version(checked_python_bin_path)
 

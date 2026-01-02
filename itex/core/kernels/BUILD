@@ -6,14 +6,17 @@ XPU_KERNEL_DEPS = [
     "//itex/core/kernels/common:no_ops",
     "@local_config_python//:python_headers",
     "@local_config_tf//:tf_header_lib",
-] + if_sycl(
-    [
-        "//itex/core/kernels/gpu:gpu_kernel_impl",
-    ],
-    [
+] + select({
+    "//itex:cpu_build": [
         "//itex/core/kernels/cpu:cpu_kernel_impl",
     ],
-)
+    "//itex:gpu_build": [
+        "//itex/core/kernels/gpu:gpu_kernel_impl",
+    ],
+    "//conditions:default": [
+        "//itex/core/kernels/cpu:cpu_kernel_impl",
+    ],
+})
 
 itex_xpu_library(
     name = "xpu_kernel",

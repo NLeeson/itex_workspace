@@ -51,7 +51,7 @@ def libiomp5_cc_binary(name, cppsources, srcdeps, common_includes):
                ],
         copts = ["-Domp_EXPORTS -D_GNU_SOURCE -D_REENTRANT"],
         includes = common_includes,
-        linkopts = ["-lpthread -ldl -Wl,--version-script=$(location :ldscript)"],
+        linkopts = ["-lpthread -ldl -Wl,--undefined-version -Wl,--version-script=$(location :ldscript)"],
         linkshared = True,
         additional_linker_inputs = [":ldscript"],
         win_def_file = ":generate_def",  # This will be ignored for non Windows builds

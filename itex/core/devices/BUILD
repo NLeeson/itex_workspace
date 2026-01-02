@@ -1,7 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device")
-load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
+load("//itex:itex.bzl", "cc_library", "if_gpu_build", "if_using_nextpluggable_device")
 
 cc_library(
     name = "xpu_device_util",
@@ -25,12 +24,23 @@ cc_library(
     deps = [
         ":device_backend_util_hdr",
         "@local_config_tf//:tf_header_lib",
-    ] + if_sycl(
+    ] + if_gpu_build(
         ["//itex/core/devices/gpu:gpu_device_impl"],
     ) + if_using_nextpluggable_device(
         ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
     ),
     alwayslink = True,
+)
+
+cc_library(
+    name = "gpu_device_selector",
+    visibility = ["//visibility:public"],
+    deps = if_using_nextpluggable_device(
+        ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
+        [
+            "//itex/core/devices/gpu:gpu_device_impl",
+        ],
+    ),
 )
 
 cc_library(

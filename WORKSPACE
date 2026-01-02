@@ -63,7 +63,10 @@ new_git_repository(
 http_archive(
     name = "xla",
     patch_args = ["-p1"],
-    patches = ["@intel_extension_for_openxla//third_party:openxla.patch"],
+    patches = [
+        "@intel_extension_for_openxla//third_party:openxla.patch",
+        "//third_party:openxla_sycl.patch",
+    ],
     sha256 = "db007b6628cfe108c63f45d611c6de910abe3ee827e55f08314ce143c4887d66",
     strip_prefix = "xla-12eee889e1f2ad41e27d7b0e970cb92d282d3ec5",
     urls = [

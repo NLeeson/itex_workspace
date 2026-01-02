@@ -97,6 +97,45 @@ def find_cc(repository_ctx):
         fail("Cannot find C++ compiler, please correct your path.")
     return cc
 
+def find_host_compiler(repository_ctx):
+    """Find host compiler used by the SYCL crosstool wrapper."""
+    if _HOST_CXX_COMPILER in repository_ctx.os.environ:
+        host_name = repository_ctx.os.environ[_HOST_CXX_COMPILER].strip()
+        if host_name.startswith("/"):
+            host_path = repository_ctx.path(host_name)
+        else:
+            host_path = repository_ctx.which(host_name)
+        if not host_path or not host_path.exists:
+            fail("Cannot find host C++ compiler, please correct your path.")
+        return str(host_path)
+    _, gcc_path, _ = find_gcc(repository_ctx)
+    return str(gcc_path)
+
+def _find_tool_from_compiler(repository_ctx, compiler_path, tool_name):
+    if not compiler_path:
+        return ""
+    res = repository_ctx.execute([compiler_path, "--print-prog-name=" + tool_name])
+    if res.return_code != 0:
+        return ""
+    tool = res.stdout.strip()
+    if tool == "":
+        return ""
+    if tool.startswith("/"):
+        if repository_ctx.path(tool).exists:
+            return tool
+        return ""
+    tool_path = repository_ctx.which(tool)
+    if tool_path == None:
+        return ""
+    return str(tool_path)
+
+def _find_first_tool(repository_ctx, compiler_path, tool_names):
+    for name in tool_names:
+        tool_path = _find_tool_from_compiler(repository_ctx, compiler_path, name)
+        if tool_path:
+            return tool_path
+    return ""
+
 def find_sycl_root(repository_ctx):
     """Find SYCL compiler."""
     sycl_name = ""
@@ -412,15 +451,41 @@ def _sycl_autoconf_imp(repository_ctx):
 
         # Get GCC compiler info
         gcc_name, gcc_path, gcc_path_prefix = find_gcc(repository_ctx)
+        host_compiler_path = find_host_compiler(repository_ctx)
+        host_compiler_basename = repository_ctx.path(host_compiler_path).basename
+        use_intel_tools = host_compiler_basename in ["icx", "icpx", "dpcpp", "clang", "clang++"]
+        tool_names = {
+            "ar": ["llvm-ar", "ar"] if use_intel_tools else ["ar"],
+            "nm": ["llvm-nm", "nm"] if use_intel_tools else ["nm"],
+            "objcopy": ["llvm-objcopy", "objcopy"] if use_intel_tools else ["objcopy"],
+            "objdump": ["llvm-objdump", "objdump"] if use_intel_tools else ["objdump"],
+            "strip": ["llvm-strip", "strip"] if use_intel_tools else ["strip"],
+            "dwp": ["llvm-dwp", "dwp"] if use_intel_tools else ["dwp"],
+            "gcov": ["llvm-cov", "gcov"] if use_intel_tools else ["gcov"],
+        }
+        ar_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["ar"])
+        nm_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["nm"])
+        objcopy_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["objcopy"])
+        objdump_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["objdump"])
+        strip_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["strip"])
+        dwp_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["dwp"])
+        gcov_path = _find_first_tool(repository_ctx, host_compiler_path, tool_names["gcov"])
 
         sycl_defines["%{cxx_builtin_include_directories}"] = str(builtin_includes)
         sycl_defines["%{sycl_builtin_include_directories}"] = str(builtin_includes)
         sycl_defines["%{extra_no_canonical_prefixes_flags}"] = "\"-fno-canonical-system-headers\""
         sycl_defines["%{unfiltered_compile_flags}"] = ""
         sycl_defines["%{host_compiler}"] = gcc_name
-        sycl_defines["%{HOST_COMPILER_PATH}"] = str(gcc_path)
+        sycl_defines["%{HOST_COMPILER_PATH}"] = host_compiler_path
         sycl_defines["%{host_compiler_install_dir}"] = str(find_gcc_install_dir(repository_ctx))
         sycl_defines["%{host_compiler_prefix}"] = str(gcc_path_prefix)
+        sycl_defines["%{AR_PATH}"] = ar_path
+        sycl_defines["%{NM_PATH}"] = nm_path
+        sycl_defines["%{OBJCOPY_PATH}"] = objcopy_path
+        sycl_defines["%{OBJDUMP_PATH}"] = objdump_path
+        sycl_defines["%{STRIP_PATH}"] = strip_path
+        sycl_defines["%{DWP_PATH}"] = dwp_path
+        sycl_defines["%{GCOV_PATH}"] = gcov_path
         sycl_defines["%{sycl_compiler_root}"] = str(find_sycl_root(repository_ctx))
         sycl_defines["%{linker_bin_path}"] = "/usr/bin"
         sycl_defines["%{SYCL_ROOT_DIR}"] = str(find_sycl_root(repository_ctx))

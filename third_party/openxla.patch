@@ -2227,6 +2227,90 @@ index ba43906c94..498a41d0b4 100644
    PRIMITIVE_TYPE_INVALID = 0;
  
 +  VOID = 100;
-   // Predicates are two-state booleans.
-   PRED = 1;
+  // Predicates are two-state booleans.
+  PRED = 1;
+
+diff --git a/xla/service/gpu/runtime/collectives.cc b/xla/service/gpu/runtime/collectives.cc
+index a1493c6a0f..f2b62d2a9e 100644
+--- a/xla/service/gpu/runtime/collectives.cc
++++ b/xla/service/gpu/runtime/collectives.cc
+@@ -32,14 +32,12 @@ limitations under the License.
+ #include "xla/service/global_device_id.h"
+ #include "xla/service/gpu/gpu_executable_run_options.h"
+-#include "xla/service/gpu/nccl_all_to_all_thunk.h"
+-#include "xla/service/gpu/nccl_api.h"
+-#include "xla/service/gpu/nccl_collective_permute_thunk.h"
+-#include "xla/service/gpu/nccl_collective_thunk.h"
+-#include "xla/service/gpu/nccl_recv_thunk.h"
+-#include "xla/service/gpu/nccl_send_thunk.h"
++#include "xla/service/gpu/ccl_all_to_all_thunk.h"
++#include "xla/service/gpu/ccl_all_gather_thunk.h"
++#include "xla/service/gpu/ccl_all_reduce_thunk.h"
++#include "xla/service/gpu/ccl_collective_permute_thunk.h"
++#include "xla/service/gpu/ccl_collective_thunk.h"
++#include "xla/service/gpu/nccl_api.h"
+ #include "xla/service/gpu/runtime/support.h"
+-#include "xla/service/gpu/runtime3/nccl_all_gather_thunk.h"
+-#include "xla/service/gpu/runtime3/nccl_all_reduce_thunk.h"
+ #include "xla/service/gpu/thunk.h"
+ #include "xla/service/service_executable_run_options.h"
+@@ -420,6 +418,7 @@ XLA_RUNTIME_DEFINE_CUSTOM_CALL(
+ // Send.
+ //===----------------------------------------------------------------------===//
  
++#if !TENSORFLOW_USE_SYCL
+ static absl::Status P2PSendImpl(const ServiceExecutableRunOptions* run_options,
+                                 const DebugOptions* debug_options,
+                                 CollectivesSupport* collectives,
+@@ -511,6 +510,7 @@ XLA_RUNTIME_DEFINE_CUSTOM_CALL(
+         .Attr<absl::Span<const int64_t>>("replica_group_values")
+         .Attr<absl::Span<const int64_t>>("source_peers")
+         .Attr<absl::Span<const int64_t>>("target_peers"));
++#endif  // !TENSORFLOW_USE_SYCL
+ 
+ //===----------------------------------------------------------------------===//
+ // AllGather.
+@@ -996,8 +996,10 @@ void RegisterCollectiveCustomCalls(
+     runtime::DirectCustomCallRegistry& registry) {
+   registry.Register("xla.gpu.collective_permute", CollectivePermute);
++#if !TENSORFLOW_USE_SYCL
+   registry.Register("xla.gpu.send", P2PSend);
+   registry.Register("xla.gpu.recv", P2PRecv);
++#endif  // !TENSORFLOW_USE_SYCL
+   registry.Register("xla.gpu.all_gather", AllGather);
+   registry.Register("xla.gpu.all_reduce", AllReduce);
+   registry.Register("xla.gpu.all_to_all", AllToAll);
+diff --git a/xla/service/gpu/runtime/BUILD b/xla/service/gpu/runtime/BUILD
+index 1be0e099ce..9ef20f1a1b 100644
+--- a/xla/service/gpu/runtime/BUILD
++++ b/xla/service/gpu/runtime/BUILD
+@@ -36,11 +36,9 @@ cc_library(
+         "//xla/service:executable",
+         "//xla/service:global_device_id",
+         "//xla/service/gpu:gpu_executable_run_options",
+         "//xla/service/gpu:nccl_api",
+-        "//xla/service/gpu:nccl_collective_thunks",
++        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
+         "//xla/service/gpu:thunk",
+-        "//xla/service/gpu/runtime3:nccl_all_gather_thunk",
+-        "//xla/service/gpu/runtime3:nccl_all_reduce_thunk",
+         "//xla/stream_executor",
+         "@com_google_absl//absl/container:flat_hash_map",
+         "@com_google_absl//absl/container:flat_hash_set",
+ 
+diff --git a/xla/service/gpu/BUILD b/xla/service/gpu/BUILD
+index b47f4e1b02..0e7295ba5f 100644
+--- a/xla/service/gpu/BUILD
++++ b/xla/service/gpu/BUILD
+@@ -1160,7 +1160,10 @@ cc_library(
+     visibility = ["//visibility:private"],
+     deps = if_gpu_is_configured([
+         ":gpu_executable_run_options",
+-        ":nccl_collective_thunks",
++        select({
++            "@local_config_sycl//sycl:using_sycl": ["@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks"],
++            "//conditions:default": [":nccl_collective_thunks"],
++        }),
+         ":nccl_clique_key",
+         ":nccl_clique",
+         ":thunk",

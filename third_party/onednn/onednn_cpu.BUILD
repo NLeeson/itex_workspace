@@ -16,8 +16,15 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine DNNL_WITH_LEVEL_ZERO": "#undef DNNL_WITH_LEVEL_ZERO",
     "#cmakedefine DNNL_SYCL_CUDA": "#undef DNNL_SYCL_CUDA",
     "#cmakedefine DNNL_SYCL_HIP": "#undef DNNL_SYCL_HIP",
+    "#cmakedefine DNNL_SYCL_GENERIC": "#undef DNNL_SYCL_GENERIC",
     "#cmakedefine DNNL_ENABLE_STACK_CHECKER": "#undef DNNL_ENABLE_STACK_CHECKER",
-    "#cmakedefine DNNL_EXPERIMENTAL": "#undef DNNL_EXPERIMENTAL",
+    "#cmakedefine DNNL_EXPERIMENTAL": "#define DNNL_EXPERIMENTAL",
+    "#cmakedefine DNNL_EXPERIMENTAL_SPARSE": "#undef DNNL_EXPERIMENTAL_SPARSE",
+    "#cmakedefine DNNL_EXPERIMENTAL_UKERNEL": "#undef DNNL_EXPERIMENTAL_UKERNEL",
+    "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
+    "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
+    "#cmakedefine DNNL_DISABLE_GPU_REF_KERNELS": "#undef DNNL_DISABLE_GPU_REF_KERNELS",
+    "#cmakedefine DNNL_GPU_VENDOR DNNL_VENDOR_${DNNL_GPU_VENDOR}": "#define DNNL_GPU_VENDOR DNNL_VENDOR_NONE",
     "#cmakedefine01 BUILD_TRAINING": "#define BUILD_TRAINING 1",
     "#cmakedefine01 BUILD_INFERENCE": "#define BUILD_INFERENCE 0",
     "#cmakedefine01 BUILD_PRIMITIVE_ALL": "#define BUILD_PRIMITIVE_ALL 1",
@@ -37,26 +44,28 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_REORDER": "#define BUILD_REORDER 0",
     "#cmakedefine01 BUILD_RESAMPLING": "#define BUILD_RESAMPLING 0",
     "#cmakedefine01 BUILD_RNN": "#define BUILD_RNN 0",
+    "#cmakedefine01 BUILD_SDPA": "#define BUILD_SDPA 0",
     "#cmakedefine01 BUILD_SHUFFLE": "#define BUILD_SHUFFLE 0",
     "#cmakedefine01 BUILD_SOFTMAX": "#define BUILD_SOFTMAX 0",
     "#cmakedefine01 BUILD_SUM": "#define BUILD_SUM 0",
-    "#cmakedefine01 BUILD_PRIMITIVE_CPU_ISA_ALL": "#define BUILD_PRIMITIVE_CPU_ISA_ALL 1",
-    "#cmakedefine01 BUILD_SSE41": "#define BUILD_SSE41 0",
-    "#cmakedefine01 BUILD_AVX2": "#define BUILD_AVX2 0",
+    "#cmakedefine01 BUILD_PRIMITIVE_CPU_ISA_ALL": "#define BUILD_PRIMITIVE_CPU_ISA_ALL 0",
+    "#cmakedefine01 BUILD_SSE41": "#define BUILD_SSE41 1",
+    "#cmakedefine01 BUILD_AVX2": "#define BUILD_AVX2 1",
     "#cmakedefine01 BUILD_AVX512": "#define BUILD_AVX512 0",
     "#cmakedefine01 BUILD_AMX": "#define BUILD_AMX 0",
-    "#cmakedefine01 BUILD_PRIMITIVE_GPU_ISA_ALL": "#define BUILD_PRIMITIVE_GPU_ISA_ALL 1",
+    "#cmakedefine01 BUILD_PRIMITIVE_GPU_ISA_ALL": "#define BUILD_PRIMITIVE_GPU_ISA_ALL 0",
     "#cmakedefine01 BUILD_GEN9": "#define BUILD_GEN9 0",
     "#cmakedefine01 BUILD_GEN11": "#define BUILD_GEN11 0",
-    "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 0",
+    "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 1",
     "#cmakedefine01 BUILD_XEHPG": "#define BUILD_XEHPG 0",
     "#cmakedefine01 BUILD_XEHPC": "#define BUILD_XEHPC 0",
     "#cmakedefine01 BUILD_XEHP": "#define BUILD_XEHP 0",
+    "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
     "#cmakedefine01 BUILD_GROUP_NORMALIZATION": "#define BUILD_GROUP_NORMALIZATION 1",
-    "#cmakedefine01 BUILD_GEMM_KERNELS_ALL": "#define BUILD_GEMM_KERNELS_ALL 1",
+    "#cmakedefine01 BUILD_GEMM_KERNELS_ALL": "#define BUILD_GEMM_KERNELS_ALL 0",
     "#cmakedefine01 BUILD_GEMM_KERNELS_NONE": "#define BUILD_GEMM_KERNELS_NONE 0",
-    "#cmakedefine01 BUILD_GEMM_SSE41": "#define BUILD_GEMM_SSE41 0",
-    "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 0",
+    "#cmakedefine01 BUILD_GEMM_SSE41": "#define BUILD_GEMM_SSE41 1",
+    "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 1",
     "#cmakedefine01 BUILD_GEMM_AVX512": "#define BUILD_GEMM_AVX512 0",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
 }
@@ -88,35 +97,23 @@ _DNNL_NO_ONEDNN_GRAPH = {
 }
 
 _TBB_WITH_ONEDNN_GRAPH_LIST = {}
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_TBB)
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
 _OMP_WITH_ONEDNN_GRAPH_LIST = {}
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_OMP)
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST = {}
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_OMP)
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_NO_ONEDNN_GRAPH)
 
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST = {}
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_THREADPOOL)
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
 # tbb + no llga build is not supported here, to simplify the logic here.
@@ -127,9 +124,9 @@ template_rule(
     out = "include/oneapi/dnnl/dnnl_config.h",
     substitutions = select({
         "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
-        "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
+        "@intel_extension_for_tensorflow//third_party/onednn:build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
         #"@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn_graph": _OMP_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
     }),
 )
 
@@ -208,6 +205,7 @@ cc_library(
         exclude = [
             "src/cpu/aarch64/**",
             "src/cpu/rv64/**",
+            "src/cpu/sycl/**",
             "src/graph/**",
         ],
     ),
@@ -224,7 +222,6 @@ load("@intel_extension_for_tensorflow//third_party/onednn:build_defs.bzl", "if_g
 # TODO(itex): add graph compiler srcs, headers & check build option, once it is merged to oneDNN master.
 
 _GRAPH_COPTS_CPU_LIST = [
-    "-Wall",
     "-Wno-unknown-pragmas",
     "-fPIC",
     "-Wno-sign-compare",

@@ -13430,7 +13430,7 @@ index 000000000..48cadf103
 --- /dev/null
 +++ b/unsupported/Eigen/CXX11/src/Tensor/TensorShufflingDpcpp.h
 @@ -0,0 +1,252 @@
-+#if defined(EIGEN_USE_DPCPP) &&                                                  \
++#if defined(EIGEN_USE_DPCPP) && defined(EIGEN_USE_GPU) &&                         \
 +    !defined(UNSUPPORTED_EIGEN_CXX11_SRC_TENSOR_TENSOR_SHUFFLING_DPCPP_HPP)
 +#define UNSUPPORTED_EIGEN_CXX11_SRC_TENSOR_TENSOR_SHUFFLING_DPCPP_HPP
 +namespace Eigen {
@@ -13541,7 +13541,7 @@ index 000000000..48cadf103
 +
 +    typedef internal::Transpose2DFunctor<Self, SUBGROUPSIZE, VECSIZE>
 +        transpose_2d_kernel_t;
-+    dev.template unary_kernel_launcher<CoeffReturnType, transpose_2d_kernel_t>(
++    dev.unary_kernel_launcher<CoeffReturnType, transpose_2d_kernel_t>(
 +        self, data, thread_range, 0, outer_dim_size, inner_dim_size,
 +        outer_sub_group, inner_sub_group);
 +  }
@@ -13672,7 +13672,7 @@ index 000000000..48cadf103
 +
 +    typedef internal::Transpose3DFunctor<Self, SUBGROUPSIZE, VECSIZE>
 +        transpose_3d_kernel_t;
-+    dev.template unary_kernel_launcher<CoeffReturnType, transpose_3d_kernel_t>(
++    dev.unary_kernel_launcher<CoeffReturnType, transpose_3d_kernel_t>(
 +        self, data, thread_range, 1, outer_dim_size, mid_dim_size,
 +        inner_dim_size, outer_sub_group, mid_sub_group, inner_sub_group);
 +  }

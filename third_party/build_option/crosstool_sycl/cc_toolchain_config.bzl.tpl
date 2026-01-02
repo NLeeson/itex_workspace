@@ -70,6 +70,8 @@ ACTION_NAMES = struct(
 )
 
 def _impl(ctx):
+    def _tool_or_default(path, default_path):
+        return path if path else default_path
     toolchain_identifier = "local_linux"
 
     host_system_name = "local"
@@ -673,16 +675,16 @@ def _impl(ctx):
         tool_paths = [
             tool_path(name = "gcc", path = ctx.attr.compiler_driver),
             tool_path(name = "g++", path = ctx.attr.compiler_driver),
-            tool_path(name = "ar", path = ctx.attr.host_compiler_prefix + "/ar"),
+            tool_path(name = "ar", path = _tool_or_default(ctx.attr.ar_path, ctx.attr.host_compiler_prefix + "/ar")),
             tool_path(name = "compat-ld", path = ctx.attr.compiler_driver),
             tool_path(name = "cpp", path = ctx.attr.compiler_driver),
-            tool_path(name = "dwp", path = ctx.attr.host_compiler_prefix + "/dwp"),
-            tool_path(name = "gcov", path = ctx.attr.host_compiler_prefix + "/gcov"),
+            tool_path(name = "dwp", path = _tool_or_default(ctx.attr.dwp_path, ctx.attr.host_compiler_prefix + "/dwp")),
+            tool_path(name = "gcov", path = _tool_or_default(ctx.attr.gcov_path, ctx.attr.host_compiler_prefix + "/gcov")),
             tool_path(name = "ld", path = ctx.attr.compiler_driver),
-            tool_path(name = "nm", path = ctx.attr.host_compiler_prefix + "/nm"),
-            tool_path(name = "objcopy", path = ctx.attr.host_compiler_prefix + "/objcopy"),
-            tool_path(name = "objdump", path = ctx.attr.host_compiler_prefix + "/objdump"),
-            tool_path(name = "strip", path = ctx.attr.host_compiler_prefix + "/strip"),
+            tool_path(name = "nm", path = _tool_or_default(ctx.attr.nm_path, ctx.attr.host_compiler_prefix + "/nm")),
+            tool_path(name = "objcopy", path = _tool_or_default(ctx.attr.objcopy_path, ctx.attr.host_compiler_prefix + "/objcopy")),
+            tool_path(name = "objdump", path = _tool_or_default(ctx.attr.objdump_path, ctx.attr.host_compiler_prefix + "/objdump")),
+            tool_path(name = "strip", path = _tool_or_default(ctx.attr.strip_path, ctx.attr.host_compiler_prefix + "/strip")),
         ]
     out = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.write(out, "Fake executable")
@@ -722,6 +724,13 @@ cc_toolchain_config = rule(
         "compiler_driver": attr.string(),
         "host_compiler_path": attr.string(),
         "host_compiler_prefix": attr.string(),
+        "ar_path": attr.string(),
+        "nm_path": attr.string(),
+        "objcopy_path": attr.string(),
+        "objdump_path": attr.string(),
+        "strip_path": attr.string(),
+        "dwp_path": attr.string(),
+        "gcov_path": attr.string(),
         "host_compiler_warnings": attr.string_list(),
         "host_unfiltered_compile_flags": attr.string_list(),
         "linker_bin_path": attr.string(),
