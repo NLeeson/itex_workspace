@@ -46,8 +46,10 @@ def check_is_intel_llvm(path):
     return True
   return False
 
-SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icx")
+SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icpx")
 
+if not os.path.exists(SYCL_PATH):
+  SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icx")
 if not os.path.exists(SYCL_PATH):
   SYCL_PATH = os.path.join('%{sycl_compiler_root}', 'bin/clang')
   if not os.path.exists(SYCL_PATH) or check_is_intel_llvm(SYCL_PATH):

@@ -487,7 +487,7 @@ def _sycl_autoconf_imp(repository_ctx):
         sycl_defines["%{DWP_PATH}"] = dwp_path
         sycl_defines["%{GCOV_PATH}"] = gcov_path
         sycl_defines["%{sycl_compiler_root}"] = str(find_sycl_root(repository_ctx))
-        sycl_defines["%{linker_bin_path}"] = "/usr/bin"
+        sycl_defines["%{linker_bin_path}"] = str(find_sycl_root(repository_ctx)) + "/bin/compiler"
         sycl_defines["%{SYCL_ROOT_DIR}"] = str(find_sycl_root(repository_ctx))
         sycl_defines["%{AOT_DEVICES}"] = str(find_aot_config(repository_ctx))
         sycl_defines["%{TF_NEED_MKL}"] = repository_ctx.os.environ[_TF_NEED_MKL].strip()
