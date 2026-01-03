@@ -206,6 +206,12 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     flags.append('-fno-approx-func')
     if gpu_only:
       flags.append('-DINTEL_GPU_ONLY')
+    # Ensure C sources are compiled as C when using icpx as the driver.
+    if os.path.basename(SYCL_PATH) == "icpx":
+      has_c = any(f.endswith(".c") for f in flags)
+      has_cpp = any(f.endswith(ext) for f in flags for ext in (".cc", ".cpp", ".cxx", ".C"))
+      if has_c and not has_cpp and "-x" not in flags:
+        flags = ["-x", "c"] + flags
     if os.path.basename(SYCL_PATH) == "clang":
       AVX_FLAG = ' -mfma -mavx -mavx2 '
     else:

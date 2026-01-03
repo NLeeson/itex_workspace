@@ -16,6 +16,13 @@ limitations under the License.
 #ifndef ITEX_CORE_UTILS_HW_INFO_H_
 #define ITEX_CORE_UTILS_HW_INFO_H_
 #include "itex/core/utils/macros.h"
+
+namespace sycl {
+inline namespace _V1 {
+class device;
+}
+}
+
 #ifndef INTEL_CPU_ONLY
 #include "third_party/build_option/sycl/runtime/itex_gpu_runtime.h"
 TF_EXPORT extern const int32_t XeHPC_id;
@@ -25,6 +32,15 @@ TF_EXPORT extern const int32_t XeHPC_no_xmx_id;
 
 bool IsXeHPC(sycl::device* device_ptr = nullptr);
 bool HasXMX(sycl::device* device_ptr = nullptr);
+#else
+inline bool IsXeHPC(sycl::device* device_ptr = nullptr) {
+  (void)device_ptr;
+  return false;
+}
+inline bool HasXMX(sycl::device* device_ptr = nullptr) {
+  (void)device_ptr;
+  return false;
+}
 #endif
 
 #endif  // ITEX_CORE_UTILS_HW_INFO_H_

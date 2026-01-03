@@ -1,4 +1,4 @@
-load("//itex:itex.bzl", "cc_library", "if_gpu_backend", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
+load("//itex:itex.bzl", "cc_library", "if_cpu_build", "if_gpu_backend", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
 load(
     "//itex/core/utils:build_config.bzl",
     "tf_protobuf_deps",
@@ -106,10 +106,13 @@ cc_library(
 
 cc_library(
     name = "device_gpu_impl",
-    deps = if_gpu_build([
-        "//itex/core/devices/gpu:eigen_stream_device",
-        "//itex/core/devices/gpu:gpu_device_impl",
-    ]) + if_using_nextpluggable_device(
+    deps = if_cpu_build(
+        [],
+        [
+            "//itex/core/devices/gpu:eigen_stream_device",
+            "//itex/core/devices/gpu:gpu_device_impl",
+        ],
+    ) + if_using_nextpluggable_device(
         ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
     ),
 )

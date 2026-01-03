@@ -1,0 +1,31 @@
+# Build Changelog
+
+## 2026-01-03: common_utils missing GPU header deps
+- Issue: `//itex/core/utils:common_utils` failed with undeclared inclusions for `eigen_stream_device.h`, `gpu_device_plugin.h`, and `gpu_info.h` in `resource_mgr.cc`.
+- Root cause: `device_gpu_impl` deps were gated by `if_gpu_build`, which is false in top-level `--config=xpu` builds when `itex_build_target` is not set. The GPU headers remained included but their providing deps were absent.
+- Fix: Gate `device_gpu_impl` on `if_cpu_build` so GPU deps are included for non-CPU builds while CPU-only transitions still exclude them.
+- Touched files: `itex/core/utils/BUILD`
+
+## 2026-01-03: itex/libitex_gpu_internal.so artifact conflict
+- Issue: `bazel build ... //itex/tools/pip_package:build_pip_package` failed with an action conflict for `itex/libitex_gpu_internal.so`.
+- Root cause: `build:xpu` set `--//itex:itex_build_target=gpu_orig_backend`, making the `itex_xpu_binary` transition for `libitex_gpu_internal.so` a no-op. Bazel then built both `//itex:itex_gpu_internal` and `//itex:libitex_gpu_internal.so` in the same configuration, producing the same output path.
+- Fix: Remove the global `itex_build_target` override from `.bazelrc` so transition-based GPU builds use a distinct configuration.
+- Touched files: `.bazelrc`
+
+## 2026-01-03: itex/core/utils/hw_info.cc failed (sycl::device ambiguity)
+- Issue: Build failed with ambiguous reference to `sycl::device` while compiling `itex/core/utils/hw_info.cc`.
+- Root cause: A forward declaration `namespace sycl { class device; }` introduced a separate type that conflicted with the SYCL inline namespace type `sycl::_V1::device` after including SYCL headers.
+- Fix: Forward declare `device` inside the inline namespace (`sycl::_V1`) to match SYCL's type and avoid ambiguity.
+- Touched files: `itex/core/utils/hw_info.h`
+
+## 2026-01-03: itex/core/devices/gpu/eigen_stream_device.cc failed (INTEL_CPU_ONLY build)
+- Issue: Build failed compiling `eigen_stream_device.cc` with `-DINTEL_CPU_ONLY`, causing missing GPU types (`gpuStream_t`, `gpuDeviceProp_t`) and Eigen stream interface errors.
+- Root cause: `device_gpu_impl` deps were gated by `if_gpu_backend` (true when `using_sycl` is set), so GPU sources were pulled into CPU-only builds under `--config=xpu`, where `INTEL_CPU_ONLY` is set by `cpu_build` transitions.
+- Fix: Restore `device_gpu_impl` gating to `if_gpu_build` and set `--//itex:itex_build_target=gpu_orig_backend` in `build:xpu` so GPU deps are present for xpu builds while CPU transitions remain CPU-only.
+- Touched files: `.bazelrc`, `itex/core/utils/BUILD`
+
+## 2026-01-02: itex/core/devices/bfc_allocator.cc failed (IsXeHPC undefined)
+- Issue: Build failed with `use of undeclared identifier 'IsXeHPC'` when compiling `itex/core/devices/bfc_allocator.cc` under `-DINTEL_CPU_ONLY`.
+- Root cause: `itex/core/utils/hw_info.h` hides the `IsXeHPC` declaration behind `#ifndef INTEL_CPU_ONLY`, but `bfc_allocator.cc` includes `hw_info.h` and calls `IsXeHPC` even when `INTEL_CPU_ONLY` is set.
+- Fix: Add `INTEL_CPU_ONLY` stub inline functions for `IsXeHPC` / `HasXMX` (and forward-declare `sycl::device`) in `itex/core/utils/hw_info.h` so CPU-only compiles have safe no-op definitions.
+- Touched files: `itex/core/utils/hw_info.h`
