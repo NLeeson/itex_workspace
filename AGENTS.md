@@ -15,6 +15,7 @@ Prioritize **minimal diffs**, **reproducible builds**, and **clearly scoped chan
 
 ## Quick start
 
+0) set runtime linker for finding runtimes .so in "/opt/intel/oneapi/2025.3/lib"
 1) Read `./build_changelog` **first** to understand the latest build issues, root causes, and fixes.
 2) Read the **Suggested reading order** in “Read-first map” to understand oneDNN + SYCL build wiring.
 3) Build the wheel using the **reference Bazel command** in “Build and resource constraints” (capture full output).
@@ -238,42 +239,36 @@ ITEX_VERBOSE=1 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python -c "import intel_extension
 
 ### 2) CPU + GPU smoke execution
 
-Execute at least one CPU op and one GPU op and confirm GPU dispatch is real (no silent CPU fallback).
+Execute at least one CPU op and one GPU op and confirm GPU dispatch is real (no silent CPU fallback) and the built features are loaded at runtime.
 
-Template (adjust device naming to match repo conventions, e.g. `/XPU:0` vs `/GPU:0`):
+Template:
 
 ```bash
-ITEX_VERBOSE=1 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python - <<'PY'
-import tensorflow as tf
-import intel_extension_for_tensorflow as itex
-
+(
+ITEX_OMP_THREADPOOL=0 ITEX_VERBOSE=2 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 ITEX_ONEDNN_GRAPH=1 ITEX_LAYOUT_OPT=1 ITEX_REMAPPER=1 ITEX_AUTO_MIXED_PRECISION=1 python - <<'PY'
+import tensorflow as tf; import intel_extension_for_tensorflow as itex
 devices = tf.config.list_physical_devices()
 print('Devices:', devices)
-
-has_accel = any(d.device_type in ('GPU', 'XPU') for d in devices)
-if not has_accel:
-    raise SystemExit('No GPU/XPU device detected; cannot validate SYCL path.')
-
-a = tf.random.uniform([1024, 1024])
-b = tf.random.uniform([1024, 1024])
-
-# CPU op
-cpu_out = tf.matmul(a, b)
-print('CPU matmul device:', cpu_out.device)
-
-# GPU/XPU op
-try:
-    with tf.device('/XPU:0'):
-        accel_out = tf.matmul(a, b)
-except Exception:
-    with tf.device('/GPU:0'):
-        accel_out = tf.matmul(a, b)
-
-print('Accel matmul device:', accel_out.device)
-
-print('smoke ok')
+try: 
+    next(d for d in devices if d.device_type in {'XPU', 'GPU'})
+except StopIteration: 
+    raise SystemExit("XPU/GPU missing")
+with tf.device('/CPU:0'):
+    a = tf.random.uniform([256, 256])
+    b = tf.random.uniform([256, 256])
+    c = tf.matmul(a, b)
+    _ = c.numpy()
+print('CPU matmul device:', c.device)
+with tf.device('/XPU:0'):
+    x = tf.random.uniform([256, 256])
+    y = tf.random.uniform([256, 256])
+    z = tf.matmul(x, y)
+    _ = z.numpy()
+print('XPU matmul device:', z.device)
 PY
+) 2>&1 | tee sanity_check_out.log
 ```
+
 
 ---
 
