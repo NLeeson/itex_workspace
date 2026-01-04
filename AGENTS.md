@@ -15,7 +15,7 @@ Prioritize **minimal diffs**, **reproducible builds**, and **clearly scoped chan
 
 ## Quick start
 
-0) set runtime linker for finding runtimes .so in "/opt/intel/oneapi/2025.3/lib"
+0) set runtime linker for solving .so runtime libs in path `"/opt/intel/oneapi/2025.3/lib"`
 1) Read `./build_changelog` **first** to understand the latest build issues, root causes, and fixes.
 2) Read the **Suggested reading order** in “Read-first map” to understand oneDNN + SYCL build wiring.
 3) Build the wheel using the **reference Bazel command** in “Build and resource constraints” (capture full output).
@@ -60,10 +60,10 @@ Primary work surface: **oneDNN integration**, **Bazel rules**
   - GPU runtime: `SYCL`
   - Graph API: enabled
   - Graph compiler backend: disabled
-- Any change affecting ABI, runtime loading, build flags, or wheel layout must include:
-  - a short rationale,
-  - the exact build commands used,
-  - verification steps and relevant log excerpts.
+- Any change must be documented in the `./build_changelog` with a new entry including:
+  - brief descripton of the issue addressed by the change
+  - stating the recommended strategy for fixing the described problem with a short rationale how the fix addresses the issue;
+  - list of touched files
 - Ensure correctness and utilization of the target system:
   - GPU/SYCL settings for Gen12 Xe-LP.
   - CPU codegen may use `-march=native` (builds are performed on the target system; no redistribution).
@@ -90,15 +90,17 @@ Primary work surface: **oneDNN integration**, **Bazel rules**
 - Do **not** incorporate unsupported ISA extensions into the build.
 - Do **not** remove, ignore, or “de-localize” `.itex_configure.bazelrc` or `.bazelrc`
 - Do **not** raise issues on local host specific paths being set explicitly.
+- Do **not** make undocumented adjustments to the build.
 
 
 ---
 
 ## Read-first map
 
-Before changing build rules, review the items below to understand how oneDNN is configured, built, and packaged into the wheel.
+Before changing build rules, review the items below to understand itex build wiring, oneDNN integration with CPU / GPU (XPU) runtimes, packaging of the wheel for installation of itex.
 Target platform: bare-metal Intel Alder Lake-P (ADL-P) with an x86-64 CPU supporting AVX2/FMA/AVX-VNNI (no AVX-512) and an integrated Intel Xe-LP Gen12 iGPU.
 Builds are performed on the target system for that target system (no redistribution). Prefer native settings; avoid AVX-512 assumptions.
+
 
 ### Build structure orientation (must read before edits)
 
@@ -181,9 +183,9 @@ bazel build -c opt --config=xpu //itex/tools/pip_package:build_pip_package --job
 - Run that executable with an output directory to write the wheel:
 
 ```bash
-mkdir -p /tmp/itex_wheel
-./bazel-bin/itex/tools/pip_package/build_pip_package /tmp/itex_wheel
-ls -1 /tmp/itex_wheel/*.whl
+mkdir -p ./itex_wheel
+./bazel-bin/itex/tools/pip_package/build_pip_package ./itex_wheel/
+ls -1 ./itex_wheel/*.whl
 ```
 
 ### Canonical install command
