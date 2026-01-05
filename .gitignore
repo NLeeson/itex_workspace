@@ -1,32 +1,76 @@
+# -----------------------------------------------------------------------------
+# OS / editor noise
+# -----------------------------------------------------------------------------
 .DS_Store
-.ipynb_checkpoints
-node_modules
-/bazel-*
-/bazel_pip
-/itex/tools/python_bin_path.sh
-/_python_build
-*.pyc
-__pycache__
+Thumbs.db
+*~
 *.swp
+*.swo
 .vscode/
-.idea/**
+.idea/
 .clwb/
+
+# -----------------------------------------------------------------------------
+# Python: bytecode, caches, test artifacts
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtualenvs (if they ever live in-repo)
+.venv/
+venv/
+env/
+
+# -----------------------------------------------------------------------------
+# Bazel: workspace-root symlinks + repo-local outputs
+# (Bazel commonly creates bazel-bin, bazel-out, bazel-testlogs, bazel-<wsname>)
+# -----------------------------------------------------------------------------
+/bazel-*
+/bazel_pip/
+
+# -----------------------------------------------------------------------------
+# ITEX / project build byproducts seen in this repo
+# -----------------------------------------------------------------------------
+/itex_wheel/
+/_python_build/
+/build_tmp/
+/profile_data/
+/itex/tools/python_bin_path.sh
+.pip_src_test/
+
+# -----------------------------------------------------------------------------
+# Generic build / packaging outputs
+# -----------------------------------------------------------------------------
 /build/
 [Bb]uild/
+dist/
+out/
 *.whl
-build_tmp
+*.egg-info/
 
-# Python / pip build artifacts
-.pip_src_test/
+# -----------------------------------------------------------------------------
+# Native build artifacts (bins/libs produced by builds)
+# -----------------------------------------------------------------------------
 *.so
 *.a
 *.o
+*.obj
+*.lo
+*.la
+*.dylib
+*.dll
+*.exe
 
-# Python cache
-__pycache__/
-*.pyc
-
-# Build directories
-build/
-dist/
+# -----------------------------------------------------------------------------
+# Node (only if you actually use it in this repo)
+# -----------------------------------------------------------------------------
+node_modules/
 

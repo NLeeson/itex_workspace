@@ -236,8 +236,14 @@ ONEDNN_GPU_VENDOR=INTEL
 - Enable verbose logging and confirm only **oneDNN v3.7.3** is initialized (no v3.3.4 / v3.6.0). Check the module init output against the build requirements:
 
 ```bash
-ITEX_VERBOSE=1 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python -c "import intel_extension_for_tensorflow as itex; import tensorflow as tf; print('ok')"
+ITEX_VERBOSE=2 DNNL_VERBOSE=1 ONEDNN_VERBOSE=1 python -c "import intel_extension_for_tensorflow as itex; import tensorflow as tf; print('ok')";
 ```
+
+More Runtime switches to consider for debugging/testing:
+`ITEX_CPP_MIN_LOG_LEVEL=2` - filtering ITEX prints (e.g. level 2 for help information including performance, functionality, debug and error logs, displayed only once);
+`ITEX_DISABLE_XLA` - disables XLA (compatibility with keras 3 ops);
+`ZE_ENABLE_TRACING_LAYER=1` `UseCyclesPerSecondTimer=1` `ENABLE_TF_PROFILER=1` - combo for GPU Profiling;
+`ITEX_OMP_THREADPOOL` - switch between omp (1)/eigen threadpool(0);
 
 ### 2) CPU + GPU smoke execution
 
