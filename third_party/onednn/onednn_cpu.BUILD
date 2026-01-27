@@ -156,7 +156,9 @@ _INCLUDES_LIST = [
     "src/common/ittnotify",
     "src/cpu",
     "src/cpu/gemm",
+    "src/cpu/x64",
     "src/cpu/x64/xbyak",
+    "third_party"
 ]
 
 _TEXTUAL_HDRS_LIST = glob(

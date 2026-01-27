@@ -61,14 +61,14 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
     )
 
     # v3.7.3
-    _ONEDNN_CPU_COMMIT = "34d53b436e652c2e315a66d65bf3c79940c2c530"
+    _ONEDNN_CPU_COMMIT = "420879fd08"
 
     new_git_repository(
         name = "onednn_cpu",
         commit = _ONEDNN_CPU_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu.BUILD"),
-        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patches = [],
         patch_args = ["-p1"],
         verbose = True,
         patch_cmds = [
@@ -81,7 +81,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         commit = _ONEDNN_CPU_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu_eigen.BUILD"),
-        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patches = [],
         patch_args = ["-p1"],
         verbose = True,
         patch_cmds = [
@@ -92,7 +92,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
     # OneDNN cpu backend with TBB runtime.
     git_repository(
         name = "oneTBB",
-        tag = "v2021.5.0",
+        tag = "v2022.3.0",
         remote = "https://github.com/oneapi-src/oneTBB/",
     )
 
@@ -184,10 +184,10 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
     new_git_repository(
         name = "onednn_gpu",
         # v3.7.3
-        commit = "34d53b436e652c2e315a66d65bf3c79940c2c530",
+        commit = "420879fd08",
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_gpu.BUILD"),
-        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patches = [],
         patch_args = ["-p1"],
         verbose = True,
         patch_cmds = [

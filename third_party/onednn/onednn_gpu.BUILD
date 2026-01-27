@@ -180,6 +180,7 @@ cc_library(
         "src/common",
         "src/cpu/gemm",
         "src/cpu/xbyak",
+        "third_party",
         "src/gpu/intel/jit/gemm/",
         "src/gpu/intel/jit/gemm/include/",
         "src/gpu/intel/jit/ngen/",
