@@ -137,6 +137,7 @@ _COPTS_LIST = [
     # TODO(itex): for symbol collision, may be removed in produce version
     "-qopenmp",
     "-Wno-unknown-pragmas",
+    "-Wno-unused-function",
 ] + [
     "-UUSE_MKL",
     "-UUSE_CBLAS",
@@ -201,9 +202,12 @@ cc_library(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/ppc64/**",
             "src/cpu/rv64/**",
             "src/cpu/sycl/**",
             "src/graph/**",
+            "src/cpu/x64/**/*avx512*",
+            "src/cpu/x64/**/*amx*",
         ],
     ),
     copts = _COPTS_LIST,

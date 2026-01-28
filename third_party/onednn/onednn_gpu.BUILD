@@ -139,6 +139,7 @@ filegroup(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/ppc64/**",
             "src/cpu/rv64/**",
             "src/gpu/nvidia/*",
             "src/gpu/amd/*",
@@ -146,6 +147,8 @@ filegroup(
             "src/gpu/generic/sycl/ref*",
             "src/graph/**",
             "src/gpu/intel/jit/v2/conv/planner/*",
+            "src/cpu/x64/**/*avx512*",
+            "src/cpu/x64/**/*amx*",
         ],
     ) + [
         ":dnnl_config_h",
@@ -169,6 +172,7 @@ cc_library(
     copts = [
         "-fexceptions",
         "-DDNNL_ENABLE_PRIMITIVE_CACHE",
+        "-Wno-unused-function",
         #TODO(itex): for symbol collision, may be removed in produce version
         "-fvisibility=hidden",
     ],
@@ -183,7 +187,8 @@ cc_library(
         "third_party",
         "src/gpu/intel/jit/gemm/",
         "src/gpu/intel/jit/gemm/include/",
-        "src/gpu/intel/jit/ngen/",
+        "src/gpu/intel/jit/config/",
+        "third_party/ngen",
         "src/gpu/intel/ocl",
         "src/sycl",
     ],

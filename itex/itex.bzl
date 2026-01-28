@@ -16,6 +16,7 @@ def tf_copts(android_optimization_level_override = "-O2", is_external = False):
     copts_list = [
         "-Wno-sign-compare",
         "-Wno-unknown-pragmas",
+        "-Wno-unused-function",
         # "-fno-exceptions", # TODO(itex): disable it first as we need expection in SE's sycl backend
         "-ftemplate-depth=900",
         "-msse3",
@@ -91,7 +92,7 @@ def cpu_copts():
                 "-march=native",
             ],
             "//conditions:default": [],
-        }) + ["-qopenmp"]
+        }) + ["-qopenmp", "-Wno-unused-function"]
     )
 
 

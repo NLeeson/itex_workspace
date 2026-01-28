@@ -187,6 +187,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         commit = "420879fd08",
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_gpu.BUILD"),
+        init_submodules = True,
         patches = [],
         patch_args = ["-p1"],
         verbose = True,

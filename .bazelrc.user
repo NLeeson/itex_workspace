@@ -1,0 +1,14 @@
+build --action_env=CC --action_env=CXX --action_env=LD --action_env=GCC_HOST_COMPILER --action_env=HOST_C_COMPILER --action_env=HOST_CXX_COMPILER 
+build --action_env=CFLAGS --action_env=CXXFLAGS --action_env=LDFLAGS
+build --repo_env=CC --repo_env=CXX --repo_env=LD --repo_env=GCC_HOST_COMPILER --repo_env=HOST_C_COMPILER --repo_env=HOST_CXX_COMPILER 
+build --repo_env=CFLAGS --repo_env=CXXFLAGS --repo_env=LDFLAGS
+
+
+build --copt=-O3 --copt=-march=native
+build --host_copt=-O2 --host_copt=-march=native
+build --linkopt=-fuse-ld=lld
+build --host_linkopt=-fuse-ld=lld
+
+build --per_file_copt=.*src/crypto/fipsmodule/bcm\.c@-O1
+
+

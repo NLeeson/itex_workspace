@@ -1,5 +1,11 @@
 # Build Changelog
 
+## 2026-01-28: onednn_gpu failed (ngen::half undefined)
+- Issue: `//third_party/onednn:onednn_gpu_so` failed with `error: no member named 'half' in namespace 'ngen'` when compiling `gen_convolution.cpp`.
+- Root cause: The `includes` list for `@onednn_gpu//:onednn_gpu` was missing `src/gpu/intel/jit/config/`, which contains `ngen_config.hpp`. This header defines `ngen::half` (aliased to `dnnl::impl::float16_t`). Without it, `ngen` fell back to a default state where `half` was undefined.
+- Fix: Add `src/gpu/intel/jit/config/` to the `includes` attribute in `onednn_gpu.BUILD`.
+- Touched files: `third_party/onednn/onednn_gpu.BUILD`
+
 ## 2026-01-03: common_utils missing GPU header deps
 - Issue: `//itex/core/utils:common_utils` failed with undeclared inclusions for `eigen_stream_device.h`, `gpu_device_plugin.h`, and `gpu_info.h` in `resource_mgr.cc`.
 - Root cause: `device_gpu_impl` deps were gated by `if_gpu_build`, which is false in top-level `--config=xpu` builds when `itex_build_target` is not set. The GPU headers remained included but their providing deps were absent.

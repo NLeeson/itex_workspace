@@ -24,6 +24,7 @@ import os
 import platform
 import subprocess
 import sys
+from pathlib import Path 
 
 # pylint: disable=g-import-not-at-top
 try:
@@ -33,8 +34,8 @@ except ImportError:
 # pylint: enable=g-import-not-at-top
 
 
-_DEFAULT_SYCL_TOOLKIT_PATH = '/opt/intel/oneapi/compiler/latest'
-_DEFAULT_MKL_PATH='/opt/intel/oneapi/mkl/latest'
+_DEFAULT_SYCL_TOOLKIT_PATH = '/opt/intel/oneapi/compiler/2025.3'
+_DEFAULT_MKL_PATH='/opt/intel/oneapi/mkl/2025.3'
 _DEFAULT_AOT_CONFIG = ''
 _DEFAULT_GCC_TOOLCHAIN_PATH = ''
 _DEFAULT_GCC_TOOLCHAIN_TARGET = ''
@@ -672,8 +673,7 @@ def prompt_loop_or_load_from_env(environ_cp,
   )
 
   for _ in range(n_ask_attempts):
-    val = get_from_env_or_user_or_default(environ_cp, var_name, full_query,
-                                          default)
+    val = get_from_env_or_user_or_default(environ_cp, var_name, full_query, default)
     if check_success(val):
       break
     if not suppress_default_error:
@@ -731,18 +731,15 @@ def set_sycl_toolkit_path(environ_cp):
       environ_cp,
       var_name='SYCL_TOOLKIT_PATH',
       var_default=_DEFAULT_SYCL_TOOLKIT_PATH,
-      ask_for_var=(
-          'Please specify the location where SYCL is installed.'),
+      ask_for_var=('Please specify the location where SYCL is installed.'),
       check_success=toolkit_exists,
       error_msg='Invalid SYCL compiler path. libsycl.so cannot be found.',
       suppress_default_error=True)
 
-  write_action_env_to_bazelrc('SYCL_TOOLKIT_PATH',
-                              sycl_toolkit_path)
-  lib_path = '%s/lib:%s/compiler/lib/intel64_lin' %(
-      sycl_toolkit_path,
-      sycl_toolkit_path,
-  )
+  write_action_env_to_bazelrc('SYCL_TOOLKIT_PATH', sycl_toolkit_path)
+  #lib_path = '%s/lib:%s/compiler/lib/intel64_lin' %(sycl_toolkit_path, sycl_toolkit_path,  )
+  lib_path = ":".join(p.as_posix() for p in sorted({d for t in ("lib", "lib/intel64", "compiler/lib") for d in Path(sycl_toolkit_path).glob(f"**/{t}") if d.is_dir()}))
+  print('SYCL_TOOLKIT_PATH derived lib_path as:', lib_path)
 
   ld_lib_path = lib_path
   ld_library_path = os.getenv('LD_LIBRARY_PATH')
@@ -760,6 +757,7 @@ def set_sycl_toolkit_path(environ_cp):
     version = sycl_toolkit_path.split("compiler")[1].split("/")[1]
     mkl_path = os.path.join(home_path, 'mkl' + '/' + version + '/')
     environ_cp['ONEAPI_MKL_PATH'] = mkl_path    
+
   set_mkl_path(environ_cp)
   mkl_path = environ_cp['ONEAPI_MKL_PATH']
   lib_path += ':' + '%slib/intel64' % (mkl_path)
@@ -907,7 +905,7 @@ def set_clang_compiler_path(environ_cp):
     string value for clang_compiler_path.
   """
   # Default path if clang-17 is installed by using apt-get install
-  default_clang_path = '/usr/lib/llvm-17/bin/clang'
+  default_clang_path = '/usr/lib/llvm-22/bin/clang'
 
   clang_compiler_path = prompt_loop_or_load_from_env(
       environ_cp,
@@ -922,6 +920,10 @@ def set_clang_compiler_path(environ_cp):
           ' setting ITEX_NEED_CLANG=0'
       ),
   )
+
+  print('derived for clang_compiler_path:', clang_compiler_path)
+  if not Path(clang_compiler_path).exists(): 
+      assert f"invalid path for {clang_compiler_path}"
 
   write_action_env_to_bazelrc('CLANG_COMPILER_PATH', clang_compiler_path)
   if environ_cp.get('TF_NEED_SYCL') == '0':
@@ -954,7 +956,7 @@ def retrieve_clang_version(clang_executable):
   if not curr_version_int:
     print('WARNING: current clang installation is not a release version.\n')
     return None
-  if int(curr_version.split('.')[0]) == 17:
+  if int(curr_version.split('.')[0]) == 22:
     write_to_bazelrc('build --linkopt=-Wl,--undefined-version')
     write_to_bazelrc('build --linkopt="-fuse-ld=lld"')
   print('You have Clang %s installed.\n' % curr_version)
@@ -988,8 +990,7 @@ def main():
       default=os.path.abspath(os.path.dirname(__file__)),
       help='The absolute path to your active Bazel workspace.')
 
-  _ITEX_WORKSPACE_ROOT = check_safe_workspace_path(
-      os.path.abspath(os.path.dirname(__file__)))
+  _ITEX_WORKSPACE_ROOT = check_safe_workspace_path(os.path.abspath(os.path.dirname(__file__)))
   _ITEX_BAZELRC = os.path.join(_ITEX_WORKSPACE_ROOT, _ITEX_BAZELRC_FILENAME)
 
   # Make a copy of os.environ to be clear when functions and getting and setting
