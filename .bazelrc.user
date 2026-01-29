@@ -12,3 +12,6 @@ build --host_linkopt=-fuse-ld=lld
 build --per_file_copt=.*src/crypto/fipsmodule/bcm\.c@-O1
 
 
+
+# Disable FP64 (Double Precision) for Intel Alder Lake-P (Gen12 Xe-LP) hardware
+build --copt="-UITEX_ENABLE_DOUBLE"
