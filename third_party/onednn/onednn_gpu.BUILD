@@ -188,6 +188,7 @@ cc_library(
         "src/cpu/gemm",
         "src/gpu/intel/jit/gemm/",
         "src/gpu/intel/jit/gemm/include/",
+        "src/gpu/intel/jit/ngen/",
         "src/gpu/intel/ocl",
         "src/sycl",
         "third_party",
