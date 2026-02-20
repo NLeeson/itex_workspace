@@ -17,3 +17,6 @@ __pycache__
 [Bb]uild/
 *.whl
 build_tmp
+
+AGENTS.md
+GEMINI.md
