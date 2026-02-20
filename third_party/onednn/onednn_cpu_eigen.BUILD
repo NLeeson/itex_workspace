@@ -157,12 +157,10 @@ _COPTS_LIST = [
 _INCLUDES_LIST = [
     "include",
     "src",
-    "third_party"
+    "third_party",
     "src/common",
-    #"src/common/ittnotify",
     "src/cpu",
     "src/cpu/gemm",
-    #"src/cpu/x64/xbyak",
     "third_party/ittnotify",
     "third_party/xbyak",
     "third_party/spdlog",
@@ -208,8 +206,6 @@ cc_library(
             "src/common/*.cpp",
             "src/cpu/*.cpp",
             "src/cpu/**/*.cpp",
-            #"src/common/ittnotify/*.c",
-            "third_party/ittnotify/*.c",
             "src/cpu/jit_utils/**/*.cpp",
             "src/cpu/x64/**/*.cpp",
             "third_party/**/*.c",
@@ -321,16 +317,12 @@ cc_library(
     srcs = _GRAPH_SRCS_LIST,
     hdrs = _GRAPH_HDRS_LIST + glob(
         [
-            #"src/cpu/x64/xbyak/xbyak.h",
-            #"src/cpu/x64/xbyak/xbyak_mnemonic.h",
-            #"src/cpu/x64/xbyak/xbyak_util.h",
             "third_party/xbyak/xbyak.h",
             "third_party/xbyak/xbyak_mnemonic.h",
             "third_party/xbyak/xbyak_util.h",
         ],
     ),
     # TODO(itex): find better way to include xbyak.h within onednn
-    #copts = _GRAPH_COPTS_CPU_LIST + ["-I external/onednn_cpu_eigen/src/cpu/x64",],
     copts = _GRAPH_COPTS_CPU_LIST + ["-I external/third_party"],
     includes = _GRAPH_INCLUDES_LIST,
     visibility = ["//visibility:public"],
