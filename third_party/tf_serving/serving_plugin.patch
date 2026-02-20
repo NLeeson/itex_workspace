@@ -2,8 +2,8 @@ diff --git a/.bazelrc b/.bazelrc
 index 483eace0..a3051b59 100644
 --- a/.bazelrc
 +++ b/.bazelrc
-@@ -41,6 +41,9 @@ build:nativeopt --copt=-march=native
- build:nativeopt --host_copt=-march=native
+@@ -41,6 +41,9 @@ build:nativeopt --copt=-xHost
+ build:nativeopt --host_copt=-xHost
  build:nativeopt --copt=-O3
  
 +# Support TF pluggable device

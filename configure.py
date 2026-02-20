@@ -283,6 +283,9 @@ def setup_python(environ_cp):
       python_lib_path = default_python_lib_path
       checked_python_lib_path = check_safe_python_lib_path(python_lib_path)
     environ_cp['PYTHON_LIB_PATH'] = checked_python_lib_path
+  else:
+    checked_python_lib_path = check_safe_python_lib_path(python_lib_path)
+    environ_cp['PYTHON_LIB_PATH'] = checked_python_lib_path
 
   _ = get_python_major_version(checked_python_bin_path)
 
@@ -585,11 +588,11 @@ def set_cc_opt_flags():
   Args:
     environ_cp: copy of the os.environ.
   """
-  default_cc_opt_flags = '-march=native -Wno-sign-compare'
+  default_cc_opt_flags = '-xHost -Wno-sign-compare'
   for opt in default_cc_opt_flags.split():
     write_to_bazelrc('build:opt --copt=%s' % opt)
   # It should be safe on the same build host.
-  write_to_bazelrc('build:opt --host_copt=-march=native')
+  write_to_bazelrc('build:opt --host_copt=-xHost')
   write_to_bazelrc('build:opt --define with_default_optimizations=true')
 
 def get_from_env_or_user_or_default(environ_cp, var_name, ask_for_var,

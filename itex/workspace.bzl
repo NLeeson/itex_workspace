@@ -60,15 +60,17 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         system_build_file = clean_dep("//third_party/systemlibs:pybind11.BUILD"),
     )
 
-    # main 20240329
-    _ONEDNN_CPU_COMMIT = "242d4d9"
+    ONEDNN_COMMIT = "4aa202ccc23dce885d89a1d1d11296fa602f6662"
 
     new_git_repository(
         name = "onednn_cpu",
-        commit = _ONEDNN_CPU_COMMIT,
+        commit = ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu.BUILD"),
+        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patch_args = ["-p1"],
         verbose = True,
+        init_submodules = True,
         patch_cmds = [
             "git log -1 --format=%H > COMMIT",
         ],
@@ -76,10 +78,13 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
 
     new_git_repository(
         name = "onednn_cpu_eigen",
-        commit = _ONEDNN_CPU_COMMIT,
+        commit = ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_cpu_eigen.BUILD"),
+        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patch_args = ["-p1"],
         verbose = True,
+        init_submodules = True,
         patch_cmds = [
             "git log -1 --format=%H > COMMIT",
         ],
@@ -179,11 +184,13 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
 
     new_git_repository(
         name = "onednn_gpu",
-        # main
-        commit = "2e7b691",
+        commit = ONEDNN_COMMIT,
         remote = "https://github.com/oneapi-src/oneDNN.git",
         build_file = clean_dep("//third_party/onednn:onednn_gpu.BUILD"),
+        patches = [clean_dep("//third_party/onednn:profiling_constexpr.patch")],
+        patch_args = ["-p1"],
         verbose = True,
+        init_submodules = True,
         patch_cmds = [
             "git log -1 --format=%H > COMMIT",
         ],

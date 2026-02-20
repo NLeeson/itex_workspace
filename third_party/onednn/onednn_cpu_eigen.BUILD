@@ -59,6 +59,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 0",
     "#cmakedefine01 BUILD_GEMM_AVX512": "#define BUILD_GEMM_AVX512 0",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
+    "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
 }
 
 _DNNL_RUNTIME_TBB = {
@@ -135,6 +136,12 @@ gen_onednn_version(
     header_out = "include/oneapi/dnnl/dnnl_version.h",
 )
 
+gen_onednn_version(
+    name = "onednn_version_hash_generator",
+    header_in = "include/oneapi/dnnl/dnnl_version_hash.h.in",
+    header_out = "include/oneapi/dnnl/dnnl_version_hash.h",
+)
+
 _COPTS_LIST = [
     "-fexceptions",
     # TODO(itex): for symbol collision, may be removed in produce version
@@ -152,9 +159,13 @@ _INCLUDES_LIST = [
     "src",
     "src/common",
     "src/common/ittnotify",
+    "third_party/ittnotify",
     "src/cpu",
+    "src/cpu/x64",
     "src/cpu/gemm",
     "src/cpu/x64/xbyak",
+    "third_party",
+    "third_party/ngen",
 ]
 
 _TEXTUAL_HDRS_LIST = glob(
@@ -164,6 +175,7 @@ _TEXTUAL_HDRS_LIST = glob(
 ) + [
     ":dnnl_config_h",
     ":onednn_version_generator",
+    ":onednn_version_hash_generator",
 ]
 
 cc_library(
@@ -197,12 +209,14 @@ cc_library(
             "src/cpu/*.cpp",
             "src/cpu/**/*.cpp",
             "src/common/ittnotify/*.c",
+            "third_party/ittnotify/*.c",
             "src/cpu/jit_utils/**/*.cpp",
             "src/cpu/x64/**/*.cpp",
         ],
         exclude = [
             "src/cpu/aarch64/**",
             "src/cpu/rv64/**",
+            "src/cpu/ppc64/**",
             "src/graph/**",
         ],
     ),
@@ -308,10 +322,16 @@ cc_library(
             "src/cpu/x64/xbyak/xbyak.h",
             "src/cpu/x64/xbyak/xbyak_mnemonic.h",
             "src/cpu/x64/xbyak/xbyak_util.h",
+            "third_party/xbyak/xbyak.h",
+            "third_party/xbyak/xbyak_mnemonic.h",
+            "third_party/xbyak/xbyak_util.h",
         ],
     ),
     # TODO(itex): find better way to include xbyak.h within onednn
-    copts = _GRAPH_COPTS_CPU_LIST + ["-I external/onednn_cpu_eigen/src/cpu/x64"],
+    copts = _GRAPH_COPTS_CPU_LIST + [
+        "-I external/onednn_cpu_eigen/src/cpu/x64",
+        "-I external/onednn_cpu_eigen/third_party",
+    ],
     includes = _GRAPH_INCLUDES_LIST,
     visibility = ["//visibility:public"],
     deps = _GRAPH_DEPS_LIST + if_graph_compiler([":onednn_graph_cpu_special_lib"]) + [":onednn_cpu_lib"],
