@@ -133,11 +133,15 @@ template <typename Group>
 void group_barrier(Group group,
                    sycl::memory_scope FenceScope = Group::fence_scope) {
   if (FenceScope == sycl::memory_scope::work_group) {
+#ifdef __SYCL_DEVICE_ONLY__
     uint32_t flags = static_cast<uint32_t>(
         __spv::MemorySemanticsMask::SequentiallyConsistent |
         __spv::MemorySemanticsMask::WorkgroupMemory);
     __spirv_ControlBarrier(__spv::Scope::Workgroup, __spv::Scope::Workgroup,
                            flags);
+#else
+    sycl::group_barrier(group, FenceScope);
+#endif
   } else {
     sycl::group_barrier(group, FenceScope);
   }
