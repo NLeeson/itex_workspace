@@ -1,33 +1,100 @@
 diff --git a/xla/mlir/backends/gpu/transforms/BUILD b/xla/mlir/backends/gpu/transforms/BUILD
 --- a/xla/mlir/backends/gpu/transforms/BUILD
 +++ b/xla/mlir/backends/gpu/transforms/BUILD
-@@ -71,7 +71,7 @@ cc_library(
+@@ -71,13 +71,20 @@
          "//xla/service/gpu:backend_configs_cc",
          "//xla/service/gpu:gpu_executable",
          "//xla/service/gpu:launch_dimensions",
 -        "//xla/service/gpu:nccl_collective_thunks",
-+        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
++    ] + select({
++        "@local_config_sycl//sycl:using_sycl": [
++            "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
++        ],
++        "//conditions:default": [
++            "//xla/service/gpu:nccl_collective_thunks",
++            "//xla/service/gpu/runtime3:nccl_all_gather_thunk",
++            "//xla/service/gpu/runtime3:nccl_all_reduce_thunk",
++        ],
++    }) + [
          "//xla/service/gpu/runtime3:conditional_thunk",
          "//xla/service/gpu/runtime3:copy_thunk",
          "//xla/service/gpu/runtime3:kernel_thunk",
-diff --git a/xla/service/gpu/runtime3/BUILD b/xla/service/gpu/runtime3/BUILD
---- a/xla/service/gpu/runtime3/BUILD
-+++ b/xla/service/gpu/runtime3/BUILD
-@@ -488,7 +488,7 @@ cc_library(
-         "//xla/service:collective_ops_utils",
-         "//xla/service/gpu:backend_configs_cc",
-         "//xla/service/gpu:nccl_api",
--        "//xla/service/gpu:nccl_collective_thunks",
-+        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
-         "//xla/service/gpu:thunk",
-         "//xla/stream_executor",
-         "@com_google_absl//absl/status",
-@@ -512,7 +512,7 @@ cc_library(
-         "//xla/service:collective_ops_utils",
-         "//xla/service/gpu:backend_configs_cc",
-         "//xla/service/gpu:nccl_api",
--        "//xla/service/gpu:nccl_collective_thunks",
-+        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
-         "//xla/service/gpu:thunk",
-         "//xla/stream_executor",
-         "//xla/translate/hlo_to_mhlo:hlo_utils",
+         "//xla/service/gpu/runtime3:memset_thunk",
+-        "//xla/service/gpu/runtime3:nccl_all_gather_thunk",
+-        "//xla/service/gpu/runtime3:nccl_all_reduce_thunk",
+         "//xla/service/gpu/runtime3:sequential_thunk",
+         "//xla/service/gpu/runtime3:while_thunk",
+         "//xla/stream_executor:blas",
+diff --git a/xla/mlir/backends/gpu/transforms/lmhlo_to_gpu_runtime.cc b/xla/mlir/backends/gpu/transforms/lmhlo_to_gpu_runtime.cc
+--- a/xla/mlir/backends/gpu/transforms/lmhlo_to_gpu_runtime.cc
++++ b/xla/mlir/backends/gpu/transforms/lmhlo_to_gpu_runtime.cc
+@@ -43,6 +43,14 @@
+ #include "xla/mlir/runtime/utils/custom_calls.h"
+ #include "xla/mlir_hlo/lhlo/IR/lhlo_ops.h"
+ #include "xla/mlir_hlo/lhlo_gpu/IR/lhlo_gpu_ops.h"
++#if TENSORFLOW_USE_SYCL
++#include "xla/service/gpu/ccl_all_gather_thunk.h"
++#include "xla/service/gpu/ccl_all_reduce_thunk.h"
++#include "xla/service/gpu/ccl_all_to_all_thunk.h"
++#include "xla/service/gpu/ccl_collective_permute_thunk.h"
++#include "xla/service/gpu/ccl_collective_thunk.h"
++#include "xla/service/gpu/ccl_p2p_thunk_common.h"
++#else
+ #include "xla/service/gpu/nccl_all_to_all_thunk.h"
+ #include "xla/service/gpu/nccl_collective_permute_thunk.h"
+ #include "xla/service/gpu/nccl_collective_thunk.h"
+@@ -50,6 +58,7 @@
+ #include "xla/service/gpu/nccl_send_thunk.h"
+ #include "xla/service/gpu/runtime3/nccl_all_gather_thunk.h"
+ #include "xla/service/gpu/runtime3/nccl_all_reduce_thunk.h"
++#endif
+ 
+ namespace xla {
+ namespace gpu {
+@@ -609,15 +618,25 @@
+   static NcclCollectiveConfig GetNcclCollectiveConfig(SendOp op,
+                                                       int replica_count,
+                                                       int num_partitions) {
++#if TENSORFLOW_USE_SYCL
++    return GetNcclP2PConfigForSendRecv(op, replica_count, num_partitions)
++        .config;
++#else
+     return GetNcclCollectiveConfigForP2POps<NcclSendThunk, SendOp>(
+         op, replica_count, num_partitions);
++#endif
+   }
+ 
+   static NcclCollectiveConfig GetNcclCollectiveConfig(RecvOp op,
+                                                       int replica_count,
+                                                       int num_partitions) {
++#if TENSORFLOW_USE_SYCL
++    return GetNcclP2PConfigForSendRecv(op, replica_count, num_partitions)
++        .config;
++#else
+     return GetNcclCollectiveConfigForP2POps<NcclRecvThunk, RecvOp>(
+         op, replica_count, num_partitions);
++#endif
+   }
+ 
+   template <typename NonCollectivePermuteOp>
+@@ -690,12 +709,20 @@
+ 
+   static Status CheckImplementable(SendOp op, int64_t replica_count,
+                                    int64_t num_partitions) {
++#if TENSORFLOW_USE_SYCL
++    return IsValidOperand(op.getInputs()[0], Thunk::kNcclSend);
++#else
+     return NcclSendThunk::CheckImplementable(op, replica_count, num_partitions);
++#endif
+   }
+ 
+   static Status CheckImplementable(RecvOp op, int64_t replica_count,
+                                    int64_t num_partitions) {
++#if TENSORFLOW_USE_SYCL
++    return IsValidOperand(op.getOutputs()[0], Thunk::kNcclSend);
++#else
+     return NcclRecvThunk::CheckImplementable(op, replica_count, num_partitions);
++#endif
+   }
+ 
+   static Status CheckImplementable(ReduceScatterStartOp op,
