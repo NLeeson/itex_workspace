@@ -1,0 +1,33 @@
+diff --git a/xla/mlir/backends/gpu/transforms/BUILD b/xla/mlir/backends/gpu/transforms/BUILD
+--- a/xla/mlir/backends/gpu/transforms/BUILD
++++ b/xla/mlir/backends/gpu/transforms/BUILD
+@@ -71,7 +71,7 @@ cc_library(
+         "//xla/service/gpu:backend_configs_cc",
+         "//xla/service/gpu:gpu_executable",
+         "//xla/service/gpu:launch_dimensions",
+-        "//xla/service/gpu:nccl_collective_thunks",
++        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
+         "//xla/service/gpu/runtime3:conditional_thunk",
+         "//xla/service/gpu/runtime3:copy_thunk",
+         "//xla/service/gpu/runtime3:kernel_thunk",
+diff --git a/xla/service/gpu/runtime3/BUILD b/xla/service/gpu/runtime3/BUILD
+--- a/xla/service/gpu/runtime3/BUILD
++++ b/xla/service/gpu/runtime3/BUILD
+@@ -488,7 +488,7 @@ cc_library(
+         "//xla/service:collective_ops_utils",
+         "//xla/service/gpu:backend_configs_cc",
+         "//xla/service/gpu:nccl_api",
+-        "//xla/service/gpu:nccl_collective_thunks",
++        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
+         "//xla/service/gpu:thunk",
+         "//xla/stream_executor",
+         "@com_google_absl//absl/status",
+@@ -512,7 +512,7 @@ cc_library(
+         "//xla/service:collective_ops_utils",
+         "//xla/service/gpu:backend_configs_cc",
+         "//xla/service/gpu:nccl_api",
+-        "//xla/service/gpu:nccl_collective_thunks",
++        "@intel_extension_for_openxla//xla/service/gpu:ccl_collective_thunks",
+         "//xla/service/gpu:thunk",
+         "//xla/stream_executor",
+         "//xla/translate/hlo_to_mhlo:hlo_utils",
