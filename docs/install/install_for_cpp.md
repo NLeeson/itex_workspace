@@ -186,7 +186,7 @@ For CPU support
 $ bazel build -c opt --config=cpu //itex:libitex_cpu_cc.so
 ```
 
-If you want to build with threadpool, you should add buid options `--define=build_with_threadpool=true` and environment variables `ITEX_OMP_THREADPOOL=0`
+Threadpool runtime is required for CPU execution. Ensure `--define=build_with_threadpool=true` is present. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
 
 ```bash
 $ bazel build -c opt --config=cpu --define=build_with_threadpool=true //itex:libitex_cpu_cc.so

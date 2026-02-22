@@ -341,19 +341,8 @@ const NativeFormatInfo* CheckForNodeNativeFormat(
   // Find matching NativeFormatInfo and then check that rewrite rule applies.
   std::vector<NativeFormatInfo>* rinfo;
   if (absl::StrContains("CPU", opt_ctx->device_name)) {
-    bool enable_omp = true;
-    ITEX_CHECK_OK(ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-#ifdef CC_THREADPOOL_BUILD
-    enable_omp = false;
-#endif
     if (opt_ctx->enable_complete_opt) {
-      if (enable_omp) {
-        rinfo = GetCPUEigenNativeFormatInfo();
-        rinfo->insert(rinfo->end(), GetCPUNativeFormatInfo()->begin(),
-                      GetCPUNativeFormatInfo()->end());
-      } else {
-        rinfo = GetCPUEigenNativeFormatInfo();
-      }
+      rinfo = GetCPUEigenNativeFormatInfo();
     } else {
       rinfo = GetCustomNativeFormatInfo();
     }

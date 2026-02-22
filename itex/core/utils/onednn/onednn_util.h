@@ -41,8 +41,6 @@ limitations under the License.
 #include "itex/core/wrapper/itex_cpu_wrapper.h"
 
 namespace itex {
-static std::once_flag read_env_once_flag;
-static bool enable_omp = true;
 typedef dnnl_status_t (*dnnl_stream_create_internal)(dnnl_stream_t*,
                                                      dnnl_engine_t, void*);
 static dnnl_stream_create_internal make_stream;
@@ -245,27 +243,22 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
 #else
 #ifndef CC_BUILD
   // CPU and python build
-  std::call_once(read_env_once_flag, []() {
-    ITEX_CHECK_OK(
-        itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-    if (!enable_omp) {
-      make_stream = reinterpret_cast<dnnl_stream_create_internal>(
-          dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
-    }
-  });
-  if (enable_omp) {
-    ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
-        << "Create oneDNN stream for unsupported engine.";
-    return dnnl::stream(engine);
-  } else {
-    if (num_thread == 1) return dnnl::stream(engine);
-
-    MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
-    dnnl_stream_t c_stream;
-    make_stream(&c_stream, engine.get(), eigen_tp);
-    dnnl::stream tp_stream = dnnl::stream(c_stream);
-    return tp_stream;
+  ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
+      << "Create oneDNN stream for unsupported engine.";
+  if (make_stream == nullptr) {
+    make_stream = reinterpret_cast<dnnl_stream_create_internal>(
+        dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
+    ITEX_CHECK(make_stream != nullptr)
+        << "Failed to resolve oneDNN threadpool stream creation symbol.";
   }
+
+  if (num_thread == 1) return dnnl::stream(engine);
+
+  MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
+  dnnl_stream_t c_stream;
+  make_stream(&c_stream, engine.get(), eigen_tp);
+  dnnl::stream tp_stream = dnnl::stream(c_stream);
+  return tp_stream;
 #else
 // CPU and C++ BUILD
 #ifdef CC_THREADPOOL_BUILD

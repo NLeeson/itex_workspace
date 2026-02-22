@@ -20,15 +20,9 @@ namespace itex {
 
 // Returns the maximum number of threads that may be used in a parallel region
 inline int GetNumThreads() {
-  bool is_omp = true;
-  ITEX_CHECK_OK(ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &is_omp));
-  if (is_omp) {
-    return GetOmpNumThreads();
-  } else {
-    const Eigen::ThreadPoolDevice& device =
-        OpKernelContext::eigen_cpu_device_singleton();
-    return device.numThreadsInPool();
-  }
+  const Eigen::ThreadPoolDevice& device =
+      OpKernelContext::eigen_cpu_device_singleton();
+  return device.numThreadsInPool();
 }
 
 // Returns the current thread number (starting from 0)
@@ -37,30 +31,17 @@ inline int GetNumThreads() {
 // amount is less than the num threads, one task can be executed in the main
 // thread, which returns -1 as thread id).
 inline int GetThreadNum() {
-  bool is_omp = true;
-  ITEX_CHECK_OK(ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &is_omp));
-  if (is_omp) {
-    return GetOmpThreadNum();
-  } else {
-    const Eigen::ThreadPoolDevice& device =
-        OpKernelContext::eigen_cpu_device_singleton();
-    return device.currentThreadId();
-  }
+  const Eigen::ThreadPoolDevice& device =
+      OpKernelContext::eigen_cpu_device_singleton();
+  return device.currentThreadId();
 }
 
 template <typename F>
 inline void ParallelFor(int64_t n, const Eigen::TensorOpCost& cost,
                         const F& f) {
-  bool is_omp = true;
-  ITEX_CHECK_OK(ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &is_omp));
-
-  if (is_omp) {
-    OmpParallelFor(0, n, 1, f);
-  } else {
-    const Eigen::ThreadPoolDevice& device =
-        OpKernelContext::eigen_cpu_device_singleton();
-    device.parallelFor(n, cost, f);
-  }
+  const Eigen::ThreadPoolDevice& device =
+      OpKernelContext::eigen_cpu_device_singleton();
+  device.parallelFor(n, cost, f);
 }
 }  // namespace itex
 

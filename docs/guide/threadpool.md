@@ -1,16 +1,16 @@
-# Selecting Thread Pool in Intel® Extension for TensorFlow\* CPU [Experimental]
+# CPU Threadpool Runtime in Intel® Extension for TensorFlow\* [Experimental]
 
-Intel® Extension for TensorFlow\* CPU lets you choose between the OpenMP thread pool (default) or Eigen thread pool through environment variable `ITEX_OMP_THREADPOOL=1` or `0` respectively. This gives you flexibility to select a more efficient thread pool for your workload and hardware configuration. If setting [`inter_op_parallelism_threads=1`](https://www.tensorflow.org/api_docs/python/tf/config/threading/set_inter_op_parallelism_threads) causes a large performance drop for your workload, we recommended you use Eigen thread pool. Running independent operations concurrently can be more efficient for cheap ops which cannot fully utilize the hardware compute units on their own.
+Intel® Extension for TensorFlow\* CPU uses oneDNN THREADPOOL runtime by default. This aligns CPU-side preprocessing and independent op scheduling with TensorFlow Eigen threadpool behavior while GPU model execution runs via SYCL/Level Zero. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
 
-## Using OpenMP Thread Pool
+## Legacy OpenMP Thread Pool (Deprecated)
 
-[OpenMP](practice_guide.md#OpenMP) thread pool is default in Intel® Extension for TensorFlow\* CPU. It provides lower scheduling overheads, better data locality, and better cache usage. Configure the number of OMP threads via the `OMP_NUM_THREADS` environment variable. Due to the fork-join model of OpenMP and TensorFlow parallelism between independent operations, you must set the correct configuration to avoid thread conflicts. Make sure the total number of OMP threads forked from `inter_op_parallelism_threads` is less than the number of available CPU cores. For example, by default, Intel® Extension for TensorFlow\* sets the number of threads used by independent non-blocking operations to be `1`. Set `OMP_NUM_THREADS` to be the number of cores available, and `KMP_BLOCKTIME=1`, `KMP_AFFINITY=granularity=fine,compact,1,0`.
+OpenMP threadpool selection through `ITEX_OMP_THREADPOOL=1` is no longer active in the runtime path. Keep this section only for historical comparison notes.
 
-## Using Eigen Thread Pool
-For workloads with large inter-op concurrency, an OpenMP thread pool may not supply sufficient parallelism between operations. In this case, you should switch to the non-blocking thread pool provided by Eigen, which is the default in TensorFlow. In this case, same as TensorFlow, `inter_op_parallelism_threads` is set to 0 by default, which means to parallelize independent operations as much as possible. The work-stealing queue in Eigen thread pool allows better dynamic load balancing, giving better performance and scaling with larger `inter_op_parallelism_threads`. No other configuration is needed when using Eigen thread pool.
+## Using Threadpool Runtime
+For workloads with large inter-op concurrency, threadpool runtime supplies non-blocking scheduling between independent operations and better dynamic load balancing. This is the default behavior; no extra environment variable is required.
 
 ## Example
-Here we show two examples using different thread pools on Intel® Xeon® Platinum 8480+ systems.
+Here we show historical comparison examples for different threadpool settings on Intel® Xeon® Platinum 8480+ systems.
 1. This example is modified from [a keras example](https://github.com/keras-team/keras-io/blob/master/examples/keras_recipes/antirectifier.py). 
 
     ```python

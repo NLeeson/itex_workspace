@@ -82,35 +82,14 @@ void InitGlobalSetting(const OptimizerConfigFlags& config) {
 #endif
 
 #ifdef INTEL_CPU_ONLY
-  const int32_t cpu_num = itex::port::MaxParallelism();
-
-  // OneDNN library executes ops in parallel using OMP threads.
-  // Setting inter_op conservatively to avoid thread oversubscription that
-  // could lead to severe perf degradations and OMP resource exhaustion.
-  // Inter ops are set such that default_inter * omp_num <= NumCores.
-  auto OMPThreadsFromEnvironment = []() -> int32_t {
-    // 1) std::getenv is thread-safe (as long as no other function modifies the
-    // host env) from C++11 onward. 2) Most of TF code (except tests and
-    // experimental code) doesn't call setenv and unsetenv
-    int32_t num;
-    const char* val = std::getenv("OMP_NUM_THREADS");
-    return (val && itex::strings::safe_strto32(val, &num)) ? num : 0;
-  };
-
-  const int32_t omp_num =
-      OMPThreadsFromEnvironment() > 0 ? OMPThreadsFromEnvironment() : cpu_num;
-  // Keep the the minimum inter number to 1 to ensure no resource conflicts.
-  const int32_t itex_inter_num = std::max((cpu_num + omp_num - 1) / omp_num, 1);
-
-  // Set inter_op_parallelism_threads if it's not initialized.
-  bool enable_omp = true;
+  bool requested_omp = false;
   ITEX_CHECK_OK(
-      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-#ifdef CC_THREADPOOL_BUILD
-  enable_omp = false;
-#endif
-  if (enable_omp)
-    setenv("TF_NUM_INTEROP_THREADS", std::to_string(itex_inter_num).c_str(), 0);
+      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", false, &requested_omp));
+  if (requested_omp) {
+    ITEX_LOG(WARNING)
+        << "ITEX_OMP_THREADPOOL=1 is deprecated and ignored. "
+        << "Using oneDNN CPU THREADPOOL runtime.";
+  }
 
   // Initialize CPU allocator:
   //   For stock TF version >= 2.9, stock TF will enable MklCPUAllocator by

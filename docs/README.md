@@ -112,7 +112,7 @@
 
 * CPU Thread Pool
 
-  Intel® Extension for TensorFlow\* uses OMP thread pool by default since it has better performance and scaling for most cases. For workloads with large inter-op concurrency, you can switch to use Eigen thread pool (default in TensorFlow) by setting the environment variable `ITEX_OMP_THREADPOOL=0`.
+  Intel® Extension for TensorFlow\* uses oneDNN THREADPOOL runtime by default for CPU execution paths. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
 
 * Operator optimization
 

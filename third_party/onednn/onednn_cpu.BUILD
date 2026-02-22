@@ -130,7 +130,9 @@ template_rule(
         "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
         "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
         #"@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn_graph": _OMP_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
+        # Hard switch to threadpool runtime for CPU oneDNN builds.
+        # "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
     }),
 )
 

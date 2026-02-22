@@ -279,8 +279,7 @@ class MatMulOp : public OpKernel {
     ITEX_CHECK_OK(
         ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", false, &enable_cache_));
 #ifdef INTEL_CPU_ONLY
-    ITEX_CHECK_OK(
-        ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp_));
+    enable_omp_ = false;
 #endif
 
 #ifdef CC_THREADPOOL_BUILD
@@ -716,8 +715,7 @@ class MatMulFunctor {
     ITEX_CHECK_OK(
         ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", false, &enable_cache_));
 #ifdef INTEL_CPU_ONLY
-    ITEX_CHECK_OK(
-        ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp_));
+    enable_omp_ = false;
 #endif
 #ifdef CC_THREADPOOL_BUILD
     enable_omp_ = false;

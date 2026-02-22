@@ -278,8 +278,7 @@ class MHAPatternWithMulAndAdd : public Fusion {
     MatchedProperties ret = FillProperties(
         &graph_view, graph_view.GetNode(node_index), pattern_, false);
 
-    bool is_omp = true;
-    ITEX_CHECK_OK(ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &is_omp));
+    const bool is_omp = false;
     if (!is_omp) {
       return ret.ToEmpty();
     }

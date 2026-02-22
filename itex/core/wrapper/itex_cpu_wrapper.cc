@@ -31,22 +31,21 @@ static void* LoadCpuLibrary() __attribute__((constructor));
 static void UnloadCpuLibrary() __attribute__((destructor));
 
 void* LoadCpuLibrary() {
-  bool enable_omp;
   if (itex_get_backend() == ITEX_BACKEND_DEFAULT) {
     itex_freeze_backend(ITEX_BACKEND_CPU);
   }
+  bool requested_omp = false;
   ITEX_CHECK_OK(
-      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-  if (enable_omp) {
-    onednn_handle = dlopen("libonednn_cpu_so.so", RTLD_NOW | RTLD_GLOBAL);
-    if (!onednn_handle) {
-      ITEX_LOG(FATAL) << dlerror();
-    }
-  } else {
-    onednn_handle = dlopen("libonednn_cpu_eigen_so.so", RTLD_NOW | RTLD_GLOBAL);
-    if (!onednn_handle) {
-      ITEX_LOG(FATAL) << dlerror();
-    }
+      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", false, &requested_omp));
+  if (requested_omp) {
+    ITEX_LOG(WARNING)
+        << "ITEX_OMP_THREADPOOL=1 is deprecated and ignored. "
+        << "Using oneDNN CPU THREADPOOL runtime.";
+  }
+
+  onednn_handle = dlopen("libonednn_cpu_eigen_so.so", RTLD_NOW | RTLD_GLOBAL);
+  if (!onednn_handle) {
+    ITEX_LOG(FATAL) << dlerror();
   }
 
   if (itex::port::CPUIDAVX512()) {
