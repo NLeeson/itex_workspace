@@ -34,8 +34,10 @@ def check_is_intel_llvm(path):
     return True
   return False
 
-SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icx")
+SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icpx")
 
+if not os.path.exists(SYCL_PATH):
+  SYCL_PATH = os.path.join("%{sycl_compiler_root}", "bin/icx")
 if not os.path.exists(SYCL_PATH):
   SYCL_PATH = os.path.join('%{sycl_compiler_root}', 'bin/clang')
   if not os.path.exists(SYCL_PATH) or check_is_intel_llvm(SYCL_PATH):
@@ -121,7 +123,6 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     # TODO use bazel --jobs number here.
     link_flags.append('-fsycl-max-parallel-link-jobs=8')
     link_flags.append("-Wl,-rpath=%{SYCL_ROOT_DIR}/lib/")
-    link_flags.append("-Wl,-rpath=%{SYCL_ROOT_DIR}/compiler/lib/intel64_lin/")
     link_flags.append("-lze_loader")
     link_flags.append("-lOpenCL")
 
@@ -192,8 +193,14 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     flags.append('-fno-approx-func')
     if gpu_only:
       flags.append('-DINTEL_GPU_ONLY')
+    # Ensure C sources are compiled as C when using icpx as the driver.
+    if os.path.basename(SYCL_PATH) == "icpx":
+      has_c = any(f.endswith(".c") for f in flags)
+      has_cpp = any(f.endswith(ext) for f in flags for ext in (".cc", ".cpp", ".cxx", ".C"))
+      if has_c and not has_cpp and "-x" not in flags:
+        flags = ["-x", "c"] + flags
     if os.path.basename(SYCL_PATH) == "clang":
-      AVX_FLAG = ' -mfma -mavx -mavx2 '
+      AVX_FLAG = ' -mfma -xHost '
     else:
       AVX_FLAG = ' -axCORE-AVX2 '
     GCC_INSTALL_DIR = ' --gcc-install-dir=' + host_compiler_install_dir + ' '
@@ -202,6 +209,16 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     if cpu_only:
       flags.append('-DINTEL_CPU_ONLY')
     flags = [f for f in flags if is_valid_flag(f, True, False)]
+    # icx/icpx do not accept -mavx512pf; drop it for Intel LLVM hosts.
+    host_basename = os.path.basename(HOST_COMPILER_PATH)
+    if host_basename in ("icx", "icpx", "dpcpp"):
+      flags = [f for f in flags if f != "-mavx512pf"]
+      # Ensure C sources are compiled as C when using icpx.
+      if host_basename == "icpx":
+        has_c = any(f.endswith(".c") for f in flags)
+        has_cpp = any(f.endswith(ext) for f in flags for ext in (".cc", ".cpp", ".cxx", ".C"))
+        if has_c and not has_cpp and "-x" not in flags:
+          flags = ["-x", "c"] + flags
     for i, f in enumerate(flags):
       if (i < len(flags) - 1)  and (f == '-isystem' or f == '-iquote'):
         while(flags[i+1].startswith('-')):
@@ -210,9 +227,9 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
     if '-Wl,-no-as-needed' in flags:
       # '-no-as-needed' option affects ELF DT_NEEDED tags for dynamic libraries mentioned on the command line AFTER the '-no-as-needed' option.
       # Add '-no-as-needed' option at the beginning of command line, to make sure all the dynamic library mentioned on the command line to be added a DT_NEEDED tag by linker
-      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -Wl,-no-as-needed -mfma -O3 -mavx -mavx2 ' + ' '.join(flags))
+      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -Wl,-no-as-needed -mfma -O3 -xHost ' + ' '.join(flags))
     else:
-      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -mfma -O3 -mavx -mavx2 ' + ' '.join(flags))
+      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -mfma -O3 -xHost ' + ' '.join(flags))
 
   return system(cmd)
 

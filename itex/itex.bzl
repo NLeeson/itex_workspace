@@ -70,7 +70,7 @@ def if_cpu_backend(if_true, if_false = []):
 
 def cpu_copts():
     # CPU default build opts: "-DINTEL_CPU_ONLY", "-mfma", "-O3", "-mavx", "-mavx2"
-    # CPU avx512 build opts: "-mavx512f", "-mavx512pf", "-mavx512cd", "-mavx512bw", "-march=skylake-avx512", "-mavx512dq"
+    # CPU avx512 build opts: "-mavx512f", "-mavx512pf", "-mavx512cd", "-mavx512bw", "-march=-xHost", "-mavx512dq"
     # CPU CC build opts: "-xHost"
     return (
         select({
@@ -80,12 +80,7 @@ def cpu_copts():
             "//conditions:default": [],
         }) + select({
             "@intel_extension_for_tensorflow//itex:cpu_avx512_build": [
-                "-mavx512f",
-                "-mavx512pf",
-                "-mavx512cd",
-                "-mavx512bw",
-                "-march=skylake-avx512",
-                "-mavx512dq",
+                "-march=-xHost", # we are running a Intel CPU with ISA <= AVX2_VNNI
             ],
             "//conditions:default": [],
         }) + select({
