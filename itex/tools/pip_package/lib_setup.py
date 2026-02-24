@@ -66,13 +66,16 @@ for filename in filenames:
     is_cpu = True
   if "gpu" in filename:
     is_gpu = True
-if is_cpu and not is_gpu:
+if is_cpu and is_gpu:
+  # Mixed CPU+GPU payload is the canonical xpu package layout.
+  _VERSION = _VERSION + ".2"
+elif is_cpu and not is_gpu:
   _VERSION = _VERSION + ".0"
 elif not is_cpu and is_gpu:
   _VERSION = _VERSION + ".2"
 else:
-  raise Exception("There are no .so files in the folder of \
-                   tensorflow-plugins, please check it.")
+  raise Exception("There are no cpu/gpu plugin .so files in \
+                   tensorflow-plugins, please check packaging inputs.")
 
 if is_rc:
   _VERSION = _VERSION + "rc" + _VERSION_EXT

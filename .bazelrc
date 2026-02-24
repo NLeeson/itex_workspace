@@ -28,7 +28,11 @@ build:gpu --repo_env TF_NEED_MKL=1
 # This config option is used for GPU backend.
 # xpu will replace gpu as default config option for GPU only backend.
 build:xpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
+# build:xpu --//itex:itex_build_target=gpu_orig_backend
+# Disabled: forcing global itex_build_target collapses transition outputs and
+# causes libitex_gpu_internal.so action conflicts in full xpu graph builds.
 build:xpu --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
+build:xpu --define=build_with_onednn=true
 build:xpu --define=build_with_onednn_graph=true
 build:xpu --define=build_with_threadpool=true
 build:xpu --define=device=gpu
