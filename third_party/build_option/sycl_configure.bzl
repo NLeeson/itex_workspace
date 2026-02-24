@@ -384,8 +384,7 @@ def _sycl_autoconf_imp(repository_ctx):
 
         builtin_includes += [find_sycl_root(repository_ctx) + "/include/sycl"]
         builtin_includes += [find_sycl_root(repository_ctx) + "/include"]
-        builtin_includes += [find_sycl_root(repository_ctx) + "/lib/clang/12.0.0/include"]
-        builtin_includes += [find_sycl_root(repository_ctx) + "/lib/clang/13.0.0/include"]
+        builtin_includes += [find_sycl_root(repository_ctx) + "/lib/clang/21/include"]
 
         pwd = repository_ctx.os.environ["PWD"]
         additional_inc = []
