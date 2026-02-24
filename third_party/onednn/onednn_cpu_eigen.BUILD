@@ -25,13 +25,14 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_INFERENCE": "#define BUILD_INFERENCE 0",
     "#cmakedefine01 BUILD_PRIMITIVE_ALL": "#define BUILD_PRIMITIVE_ALL 1",
     "#cmakedefine01 BUILD_BATCH_NORMALIZATION": "#define BUILD_BATCH_NORMALIZATION 0",
+    "#cmakedefine01 BUILD_LAYER_NORMALIZATION": "#define BUILD_LAYER_NORMALIZATION 0",
+    "#cmakedefine01 BUILD_GROUP_NORMALIZATION": "#define BUILD_GROUP_NORMALIZATION 0",
     "#cmakedefine01 BUILD_BINARY": "#define BUILD_BINARY 0",
     "#cmakedefine01 BUILD_CONCAT": "#define BUILD_CONCAT 0",
     "#cmakedefine01 BUILD_CONVOLUTION": "#define BUILD_CONVOLUTION 0",
     "#cmakedefine01 BUILD_DECONVOLUTION": "#define BUILD_DECONVOLUTION 0",
     "#cmakedefine01 BUILD_ELTWISE": "#define BUILD_ELTWISE 0",
     "#cmakedefine01 BUILD_INNER_PRODUCT": "#define BUILD_INNER_PRODUCT 0",
-    "#cmakedefine01 BUILD_LAYER_NORMALIZATION": "#define BUILD_LAYER_NORMALIZATION 0",
     "#cmakedefine01 BUILD_LRN": "#define BUILD_LRN 0",
     "#cmakedefine01 BUILD_MATMUL": "#define BUILD_MATMUL 0",
     "#cmakedefine01 BUILD_POOLING": "#define BUILD_POOLING 0",
@@ -53,17 +54,16 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_GEN9": "#define BUILD_GEN9 0",
     "#cmakedefine01 BUILD_GEN11": "#define BUILD_GEN11 0",
     "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 0",
+    "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
+    "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
     "#cmakedefine01 BUILD_XEHPG": "#define BUILD_XEHPG 0",
     "#cmakedefine01 BUILD_XEHPC": "#define BUILD_XEHPC 0",
     "#cmakedefine01 BUILD_XEHP": "#define BUILD_XEHP 0",
-    "#cmakedefine01 BUILD_GROUP_NORMALIZATION": "#define BUILD_GROUP_NORMALIZATION 1",
     "#cmakedefine01 BUILD_GEMM_KERNELS_ALL": "#define BUILD_GEMM_KERNELS_ALL 1",
     "#cmakedefine01 BUILD_GEMM_KERNELS_NONE": "#define BUILD_GEMM_KERNELS_NONE 0",
     "#cmakedefine01 BUILD_GEMM_SSE41": "#define BUILD_GEMM_SSE41 0",
     "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 0",
     "#cmakedefine01 BUILD_GEMM_AVX512": "#define BUILD_GEMM_AVX512 0",
-    "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
-    "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
 }
 
 _DNNL_RUNTIME_TBB = {
@@ -93,35 +93,20 @@ _DNNL_NO_ONEDNN_GRAPH = {
 }
 
 _TBB_WITH_ONEDNN_GRAPH_LIST = {}
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_TBB)
-
 _TBB_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
-
 _OMP_WITH_ONEDNN_GRAPH_LIST = {}
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_OMP)
-
 _OMP_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST = {}
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_OMP)
-
 _OMP_WITHOUT_ONEDNN_GRAPH_LIST.update(_DNNL_NO_ONEDNN_GRAPH)
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST = {}
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_THREADPOOL)
-
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
 # tbb + no llga build is not supported here, to simplify the logic here.
@@ -217,6 +202,7 @@ cc_library(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/sycl/**",
             "third_party/xbyak_aarch64/**",
             "src/cpu/rv64/**",
             "src/graph/**",
