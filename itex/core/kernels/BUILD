@@ -1,12 +1,10 @@
-load("//itex:itex.bzl", "cc_binary", "cc_library", "if_using_nextpluggable_device", "itex_xpu_library", "tf_copts")
-load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl", "if_xetla")
-
+load("//itex:itex.bzl", "cc_binary", "cc_library", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_library", "tf_copts")
 XPU_KERNEL_DEPS = [
     "//itex/core/devices:device_backend_util_hdr",
     "//itex/core/kernels/common:no_ops",
     "@local_config_python//:python_headers",
     "@local_config_tf//:tf_header_lib",
-] + if_sycl(
+] + if_gpu_build(
     [
         "//itex/core/kernels/gpu:gpu_kernel_impl",
     ],

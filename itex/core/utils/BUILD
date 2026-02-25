@@ -1,10 +1,8 @@
-load("//itex:itex.bzl", "cc_library", "if_gpu_backend", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
+load("//itex:itex.bzl", "cc_library", "if_gpu_backend", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
 load(
     "//itex/core/utils:build_config.bzl",
     "tf_protobuf_deps",
 )
-load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
-
 package(
     default_visibility = [
         "//visibility:public",
@@ -108,7 +106,7 @@ cc_library(
 
 cc_library(
     name = "device_gpu_impl",
-    deps = if_sycl([
+    deps = if_gpu_build([
         "//itex/core/devices/gpu:eigen_stream_device",
         "//itex/core/devices/gpu:gpu_device_impl",
     ]) + if_using_nextpluggable_device(
