@@ -55,6 +55,8 @@ const TFNPD_Api* TFNPD_InitPlugin(TFNPD_PluginParams* params,
   params->is_pluggable_device = true;
   params->use_pjrt_on_demand_compile = false;
   params->priority = npdConfig.IfEnableNextPluggableDevice() ? 300 : 0;
+  ITEX_LOG(INFO) << "ITEX_INIT NPD registered device_type="
+                 << params->device_type << " priority=" << params->priority;
   static TFNPD_Api tfnpd_api;
 
   tfnpd_api.TFNPD_GetDeviceCount = itex::TFNPD_GetDeviceCount;

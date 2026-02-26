@@ -149,6 +149,8 @@ void TF_InitGraph(TP_OptimizerRegistrationParams* params, TF_Status* status) {
   params->device_type = itex::DEVICE_XPU;
   params->optimizer->create_func = (itex::graph::Optimizer_XPU_Create);
 #endif  // INTEL_CPU_ONLY
+  ITEX_LOG(INFO) << "ITEX_INIT Graph optimizer registered for device_type="
+                 << params->device_type;
 
   // Initialize and print global settings.
   InitGlobalSetting(GetOptimizerConfigFlags());

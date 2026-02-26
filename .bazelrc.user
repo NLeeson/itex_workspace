@@ -1,0 +1,32 @@
+startup --max_idle_secs=0
+
+# compilers
+build --action_env=CC --action_env=CXX --action_env=LD --action_env=HOST_C_COMPILER --action_env=HOST_CXX_COMPILER  --action_env=CMAKE_C_COMPILER --action_env=CMAKE_CXX_COMPILER
+build   --repo_env=CC   --repo_env=CXX   --repo_env=LD   --repo_env=HOST_C_COMPILER   --repo_env=HOST_CXX_COMPILER  --repo_env=CMAKE_C_COMPILER --repo_env=CMAKE_CXX_COMPILER
+
+build --action_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
+build --repo_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
+
+# compiler flags
+build --action_env=CFLAGS --action_env=CXXFLAGS --action_env=LDFLAGS
+build   --repo_env=CFLAGS   --repo_env=CXXFLAGS   --repo_env=LDFLAGS
+
+# paths
+build --action_env=L0_INSTALL_PATH --repo_env=L0_INSTALL_PATH
+
+# project optim 
+build --copt=-fPIC --copt=-O3 --copt=-xHost
+build --host_copt=-fPIC --host_copt=-O2 --host_copt=-xHost
+
+# link opts
+build --linkopt=-fuse-ld=lld --linkopt=-Wl,--undefined-version
+build --host_linkopt=-fuse-ld=lld --host_linkopt=-Wl,--undefined-version
+
+# relax optim for fipsmodule as it explodes the memory
+build --per_file_copt='.*src/crypto/fipsmodule/bcm\.c@-O2'
+build --per_file_copt='(.*/)?bcm\.c@-O2'
+
+# external libs mute noise, disable low signal warnings 
+build --per_file_copt='^external/com_google_protobuf/.*@-Wno-unused-function'
+build --per_file_copt='^external/llvm_openmp/.*@-Wno-unused-but-set-variable,-Wno-switch,-Wno-vla-cxx-extension,-Wno-higher-precision-for-complex-division'
+build --per_file_copt='^external/xla/.*@-Wno-macro-redefined'

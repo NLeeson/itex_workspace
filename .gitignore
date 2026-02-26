@@ -1,8 +1,6 @@
 .DS_Store
 .ipynb_checkpoints
 node_modules
-/.bazelrc.user
-/.itex_configure.bazelrc
 /bazel-*
 /bazel_pip
 /itex/tools/python_bin_path.sh
