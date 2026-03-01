@@ -63,37 +63,35 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine01 BUILD_SHUFFLE": "#define BUILD_SHUFFLE 0",
     "#cmakedefine01 BUILD_SOFTMAX": "#define BUILD_SOFTMAX 0",
     "#cmakedefine01 BUILD_SUM": "#define BUILD_SUM 0",
-    "#cmakedefine01 BUILD_PRIMITIVE_CPU_ISA_ALL": "#define BUILD_PRIMITIVE_CPU_ISA_ALL 1",
+    "#cmakedefine01 BUILD_PRIMITIVE_CPU_ISA_ALL": "#define BUILD_PRIMITIVE_CPU_ISA_ALL 0",
     "#cmakedefine01 BUILD_SSE41": "#define BUILD_SSE41 0",
-    "#cmakedefine01 BUILD_AVX2": "#define BUILD_AVX2 0",
+    "#cmakedefine01 BUILD_AVX2": "#define BUILD_AVX2 1",
     "#cmakedefine01 BUILD_AVX512": "#define BUILD_AVX512 0",
     "#cmakedefine01 BUILD_AMX": "#define BUILD_AMX 0",
-    "#cmakedefine01 BUILD_PRIMITIVE_GPU_ISA_ALL": "#define BUILD_PRIMITIVE_GPU_ISA_ALL 1",
+    "#cmakedefine01 BUILD_PRIMITIVE_GPU_ISA_ALL": "#define BUILD_PRIMITIVE_GPU_ISA_ALL 0",
     "#cmakedefine01 BUILD_GEN9": "#define BUILD_GEN9 0",
     "#cmakedefine01 BUILD_GEN11": "#define BUILD_GEN11 0",
+    "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 1",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
     "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
-    "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 0",
     "#cmakedefine01 BUILD_XEHPG": "#define BUILD_XEHPG 0",
     "#cmakedefine01 BUILD_XEHPC": "#define BUILD_XEHPC 0",
     "#cmakedefine01 BUILD_XEHP": "#define BUILD_XEHP 0",
-    "#cmakedefine01 BUILD_GEMM_KERNELS_ALL": "#define BUILD_GEMM_KERNELS_ALL 1",
+    "#cmakedefine01 BUILD_GEMM_KERNELS_ALL": "#define BUILD_GEMM_KERNELS_ALL 0",
     "#cmakedefine01 BUILD_GEMM_KERNELS_NONE": "#define BUILD_GEMM_KERNELS_NONE 0",
     "#cmakedefine01 BUILD_GEMM_SSE41": "#define BUILD_GEMM_SSE41 0",
-    "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 0",
+    "#cmakedefine01 BUILD_GEMM_AVX2": "#define BUILD_GEMM_AVX2 1",
     "#cmakedefine01 BUILD_GEMM_AVX512": "#define BUILD_GEMM_AVX512 0",
 }
 
 _CMAKE_ONEDNN_GRAPH_LIST = {
     "#cmakedefine ONEDNN_BUILD_GRAPH": "#define ONEDNN_BUILD_GRAPH",
 }
-
 _CMAKE_ONEDNN_GRAPH_LIST.update(_CMAKE_COMMON_LIST)
 
 _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST = {
     "#cmakedefine ONEDNN_BUILD_GRAPH": "#undef ONEDNN_BUILD_GRAPH",
 }
-
 _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST.update(_CMAKE_COMMON_LIST)
 
 template_rule(
@@ -102,7 +100,7 @@ template_rule(
     out = "include/oneapi/dnnl/dnnl_config.h",
     substitutions = select({
         "@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn_graph": _CMAKE_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _CMAKE_ONEDNN_GRAPH_LIST,
     }),
 )
 
@@ -115,7 +113,7 @@ convert_cl_to_cpp(
 convert_header_to_cpp(
     name = "header_generator",
     src = "src/gpu/intel/ocl/ocl_kernel_list.cpp.in",
-    header_list = glob(["src/gpu/**/*.h"]),
+    header_list = glob(["src/gpu/intel/**/*.h"]),
 )
 
 gen_onednn_version(

@@ -1,5 +1,12 @@
 startup --max_idle_secs=0
 
+
+build --action_env=TF_NEED_SYCL --repo_env=TF_NEED_SYCL
+build --action_env=TF_NEED_CUDA --repo_env=TF_NEED_CUDA
+build --action_env=TF_NEED_ROCM --repo_env=TF_NEED_ROCM
+build --action_env=TF_NEED_MKL --repo_env=TF_NEED_MKL
+build --action_env=ONEAPI_MKL_PATH --repo_env=ONEAPI_MKL_PATH
+
 # compilers
 build --action_env=CC --action_env=CXX --action_env=LD --action_env=HOST_C_COMPILER --action_env=HOST_CXX_COMPILER  --action_env=CMAKE_C_COMPILER --action_env=CMAKE_CXX_COMPILER
 build   --repo_env=CC   --repo_env=CXX   --repo_env=LD   --repo_env=HOST_C_COMPILER   --repo_env=HOST_CXX_COMPILER  --repo_env=CMAKE_C_COMPILER --repo_env=CMAKE_CXX_COMPILER
