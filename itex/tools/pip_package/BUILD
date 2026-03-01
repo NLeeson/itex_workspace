@@ -7,6 +7,7 @@ load(
     "//itex:itex.bzl",
     "if_cpu_backend",
     "if_gpu_backend",
+    "if_using_nextpluggable_device",
     "transitive_hdrs",
 )
 load(
@@ -56,6 +57,8 @@ COMMON_PIP_DEPS = [
 ] + if_gpu_backend([
     "//itex:libitex_gpu.so",
     "//itex:libitex_gpu_internal.so",
+]) + if_using_nextpluggable_device([
+    "//itex/core/utils:libintel_extension_for_openxla",
 ]) + if_cpu_backend([
     # TODO(itex): need refine if_cpu_onednn
     "//itex:libitex_cpu.so",
