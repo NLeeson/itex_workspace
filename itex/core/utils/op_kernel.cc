@@ -163,7 +163,7 @@ Status OpKernelContext::input(StringPiece name, const Tensor** tensor) {
 void* OpKernelContext::tensor_data(int index) {
   TF_Tensor* tensor = nullptr;
   TF_GetInput(ctx_, index, &tensor, status_);
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   void* data;
   if (npdConfig_.IfEnableNextPluggableDevice())
     data = tensor_get_raw_data(tensor);
@@ -236,7 +236,7 @@ Status OpKernelContext::forward_input_or_allocate_output(
       candidate_input_indices.size(), output_index,
       output_shape.dim_sizes().data(), output_shape.dims(), forwarded_input,
       status_);
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   if (pointer_is_pjrt_tensor(tensor)) {
     PJRT_Buffer* pjrt_c_buffer = TF_GetPjRtCBuffer(tensor, status_);
     if (pjrt_c_buffer == nullptr) {
@@ -337,7 +337,7 @@ Status OpKernelContext::allocate_output(int index, const TensorShape& shape,
   TF_Tensor* output =
       TF_AllocateOutput(ctx_, index, static_cast<TF_DataType>(out_type),
                         shape.dim_sizes().data(), shape.dims(), size, status_);
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   if (pointer_is_pjrt_tensor(output)) {
     static bool is_pjrt_buffer_cached = npdConfig_.isPJRTBufferCached();
 
@@ -441,7 +441,7 @@ Status OpKernelContext::allocate_temp(
   TF_Tensor* tmp = TF_AllocateTemp(ctx_, static_cast<TF_DataType>(type),
                                    shape.dim_sizes().data(), shape.dims(),
                                    &allocator_attr.plugin_attr(), status_);
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   if (pointer_is_pjrt_tensor(tmp)) {
     int device_id = TF_GetDeviceId(ctx_);
     static PJRT_Client* pjrt_c_client = TF_GetPjRtCClient("XPU", status_);
@@ -778,7 +778,7 @@ const char* OpKernelConstruction::OpName() const {
 }
 
 OpKernel::OpKernel(OpKernelConstruction* context)
-#ifndef USING_NEXTPLUGGABLE_DEVICE
+#if !defined(USING_NEXTPLUGGABLE_DEVICE) || defined(INTEL_CPU_ONLY)
     : op_name(context->OpName()) {
 }
 #else
@@ -786,7 +786,7 @@ OpKernel::OpKernel(OpKernelConstruction* context)
       output_shape_in_first_step_(OUTPUT_SIZE, TensorShape()),
       itex_pjrt_buffer_(OUTPUT_SIZE, nullptr) {
 }
-#endif  // USING_NEXTPLUGGABLE_DEVICE
+#endif  // USING_NEXTPLUGGABLE_DEVICE && !INTEL_CPU_ONLY
 
 OpKernel::~OpKernel() {}
 

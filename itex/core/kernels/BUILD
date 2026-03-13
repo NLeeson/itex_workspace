@@ -1,23 +1,31 @@
-load("//itex:itex.bzl", "cc_binary", "cc_library", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "cc_binary", "cc_library", "if_gpu_or_root_sycl_using_nextpluggable_device", "itex_xpu_library", "tf_copts")
 XPU_KERNEL_DEPS = [
     "//itex/core/devices:device_backend_util_hdr",
+    "//itex/core/kernels/cpu:cpu_kernel_init_hdr",
     "//itex/core/kernels/common:no_ops",
+    "//itex/core/kernels/gpu:gpu_kernel_init_hdr",
     "@local_config_python//:python_headers",
     "@local_config_tf//:tf_header_lib",
-] + if_gpu_build(
-    [
-        "//itex/core/kernels/gpu:gpu_kernel_impl",
-    ],
-    [
+] + select({
+    "//itex:cpu_build": [
         "//itex/core/kernels/cpu:cpu_kernel_impl",
     ],
-)
+    "//itex:gpu_build": [
+        "//itex/core/kernels/gpu:gpu_kernel_impl",
+    ],
+    "//itex:root_sycl_build": [
+        "//itex/core/kernels/gpu:gpu_kernel_impl",
+    ],
+    "//conditions:default": [
+        "//itex/core/kernels/cpu:cpu_kernel_impl",
+    ],
+})
 
 itex_xpu_library(
     name = "xpu_kernel",
     srcs = ["xpu_kernel.cc"],
     hdrs = ["xpu_kernel.h"],
-    copts = if_using_nextpluggable_device(
+    copts = if_gpu_or_root_sycl_using_nextpluggable_device(
         ["-DUSING_NEXTPLUGGABLE_DEVICE"],
     ),
     linkstatic = 1,
@@ -31,7 +39,7 @@ itex_xpu_library(
 itex_xpu_library(
     name = "xpu_kernel_cc",
     srcs = ["xpu_kernel.cc"],
-    copts = if_using_nextpluggable_device(
+    copts = if_gpu_or_root_sycl_using_nextpluggable_device(
         ["-DUSING_NEXTPLUGGABLE_DEVICE"],
     ),
     linkstatic = 1,

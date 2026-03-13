@@ -608,14 +608,17 @@ class PoolingOp : public PoolingForwardOpBase<T> {
           onednn_engine, pooling_prop_kind, algo, src_md, dst_md, strides,
           filter_dims, dilation_dims, padding_left, padding_right, attr);
       Tensor scratchpad_tensor;
-      int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size}),
-                                            &scratchpad_tensor));
-      auto scratchpad_mem =
-          dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
-                       GetTensorBuffer<T>(&scratchpad_tensor));
+      dnnl::memory scratchpad_mem;
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size}),
+                                              &scratchpad_tensor));
+        scratchpad_mem =
+            dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
+                         GetTensorBuffer<T>(&scratchpad_tensor));
+      }
 
       dnnl::pooling_forward fwd(fwd_pd);
 
@@ -632,9 +635,10 @@ class PoolingOp : public PoolingForwardOpBase<T> {
                                       static_cast<void*>(dst_data));
 
       std::unordered_map<int, dnnl::memory> net_args(
-          {{DNNL_ARG_SRC, src_mem},
-           {DNNL_ARG_DST, dst_mem},
-           {DNNL_ARG_SCRATCHPAD, scratchpad_mem}});
+          {{DNNL_ARG_SRC, src_mem}, {DNNL_ARG_DST, dst_mem}});
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        net_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+      }
 
       if (workspace_enabled) {
         TensorShape ws_tensor_shape;

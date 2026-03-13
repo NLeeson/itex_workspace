@@ -36,6 +36,55 @@ limitations under the License.
 #include "tensorflow/c/kernels.h"
 #endif
 
+namespace {
+
+bool DebugWiringEnabled() {
+  static bool enabled = []() {
+    bool value = false;
+    auto status =
+        itex::ReadBoolFromEnvVar("ITEX_DEBUG_WIRING", false, &value);
+    if (!status.ok()) {
+      ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
+      return false;
+    }
+    return value;
+  }();
+  return enabled;
+}
+
+void LogKernelWiring(ITEX_BACKEND backend, const std::string& extra = "") {
+  if (!DebugWiringEnabled()) return;
+  ITEX_LOG(INFO) << "ITEX_DEBUG_WIRING component=xpu_kernel backend="
+                 << itex_backend_to_string(backend)
+                 << " compiled={INTEL_CPU_ONLY="
+#ifdef INTEL_CPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", INTEL_GPU_ONLY="
+#ifdef INTEL_GPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", USING_NEXTPLUGGABLE_DEVICE="
+#ifdef USING_NEXTPLUGGABLE_DEVICE
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", CC_BUILD="
+#ifdef CC_BUILD
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << "} " << extra;
+}
+
+}  // namespace
+
 #ifndef CC_BUILD
 void TF_InitKernel_Internal() {
 #else
@@ -43,6 +92,7 @@ void TF_InitKernel() {
 #endif
   // Register generic GPU kernels.
   ITEX_BACKEND backend = itex_get_backend();
+  LogKernelWiring(backend, "event=init");
   switch (backend) {
     case ITEX_BACKEND_CPU:
       break;
@@ -52,6 +102,10 @@ void TF_InitKernel() {
       RegisterGPUKernels(itex::DEVICE_XPU);
 #ifdef USING_NEXTPLUGGABLE_DEVICE
       ITEXNpdConfig& npdConfig = ITEXNpdConfig::getNpdConfig();
+      LogKernelWiring(backend, std::string("event=npd_check npd_enabled=") +
+                                   (npdConfig.IfEnableNextPluggableDevice()
+                                        ? "1"
+                                        : "0"));
       if (npdConfig.IfEnableNextPluggableDevice()) {
         TF_Status* tf_status = TF_NewStatus();
         TF_CreateAndSetPjRtCApiClient(itex::DEVICE_XPU, tf_status, nullptr, 0);
@@ -75,10 +129,12 @@ void TF_InitKernel() {
   }
   // Register op definitions.
   CallOnce_RegisterOps();
+  LogKernelWiring(backend, "event=ops_registered");
 
 #ifdef INTEL_CPU_ONLY
   // Register generic CPU kernels.
   RegisterCPUKernels(itex::DEVICE_CPU);
+  LogKernelWiring(backend, "event=cpu_kernels_registered");
 #endif  // INTEL_CPU_ONLY
 
 #ifndef CC_BUILD

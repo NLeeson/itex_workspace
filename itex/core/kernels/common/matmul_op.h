@@ -318,12 +318,16 @@ class MatMulOp : public OpKernel {
       bias_mem_.set_data_handle(context->tensor_data(kBiasIndex_));
     }
 
-    OP_REQUIRES_OK(context,
-                   context->allocate_temp(DataTypeToEnum<T>::v(),
-                                          TensorShape({scratchpad_size_}),
-                                          scratchpad_tensor_.get()));
-    scratchpad_mem_.set_data_handle(
-        GetTensorBuffer<T>(scratchpad_tensor_.get()));
+    if (scratchpad_size_ > 0) {
+      OP_REQUIRES_OK(context,
+                     context->allocate_temp(DataTypeToEnum<T>::v(),
+                                            TensorShape({scratchpad_size_}),
+                                            scratchpad_tensor_.get()));
+      scratchpad_mem_.set_data_handle(
+          GetTensorBuffer<T>(scratchpad_tensor_.get()));
+    } else {
+      scratchpad_mem_ = dnnl::memory();
+    }
 
     if (post_op_util_.HasAdd()) {
       int is_forward_success = kUnsuccess_;
@@ -590,14 +594,19 @@ class MatMulOp : public OpKernel {
       } else {
         weights_mem_ = weights_mem_input_;
       }
-      scratchpad_size_ = matmul_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_ =
-          dnnl::memory(matmul_pd.scratchpad_desc(), dnnl_engine_,
-                       GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      scratchpad_size_ = 0;
+      if (HasDnnlScratchpad(matmul_pd.scratchpad_desc())) {
+        scratchpad_size_ = matmul_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_ =
+            dnnl::memory(matmul_pd.scratchpad_desc(), dnnl_engine_,
+                         GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
 
       matmul_primitive_ = dnnl::matmul(matmul_pd);
       src_mem_ = CreateDnnlMemory(src_md, dnnl_engine_,
@@ -607,7 +616,9 @@ class MatMulOp : public OpKernel {
       fwd_primitive_args_.emplace(DNNL_ARG_SRC, src_mem_);
       fwd_primitive_args_.emplace(DNNL_ARG_WEIGHTS, weights_mem_);
       fwd_primitive_args_.emplace(DNNL_ARG_DST, dst_mem_);
-      fwd_primitive_args_.emplace(DNNL_ARG_SCRATCHPAD, scratchpad_mem_);
+      if (HasDnnlScratchpad(matmul_pd.scratchpad_desc())) {
+        fwd_primitive_args_.emplace(DNNL_ARG_SCRATCHPAD, scratchpad_mem_);
+      }
 
       if (post_op_util_.HasBias()) {
         fwd_primitive_args_.emplace(DNNL_ARG_BIAS, bias_mem_);
@@ -756,12 +767,16 @@ class MatMulFunctor {
       bias_mem_.set_data_handle(bias_tensor_data);
     }
 
-    OP_REQUIRES_OK(context,
-                   context->allocate_temp(DataTypeToEnum<T>::v(),
-                                          TensorShape({scratchpad_size_}),
-                                          scratchpad_tensor_.get()));
-    scratchpad_mem_.set_data_handle(
-        GetTensorBuffer<T>(scratchpad_tensor_.get()));
+    if (scratchpad_size_ > 0) {
+      OP_REQUIRES_OK(context,
+                     context->allocate_temp(DataTypeToEnum<T>::v(),
+                                            TensorShape({scratchpad_size_}),
+                                            scratchpad_tensor_.get()));
+      scratchpad_mem_.set_data_handle(
+          GetTensorBuffer<T>(scratchpad_tensor_.get()));
+    } else {
+      scratchpad_mem_ = dnnl::memory();
+    }
 
     if (post_op_util_.HasAdd()) {
       // In-place do not success, need reorder.
@@ -963,14 +978,19 @@ class MatMulFunctor {
       } else {
         weights_mem_ = weights_mem_input_;
       }
-      scratchpad_size_ = matmul_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_ =
-          dnnl::memory(matmul_pd.scratchpad_desc(), dnnl_engine_,
-                       GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      scratchpad_size_ = 0;
+      if (HasDnnlScratchpad(matmul_pd.scratchpad_desc())) {
+        scratchpad_size_ = matmul_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_ =
+            dnnl::memory(matmul_pd.scratchpad_desc(), dnnl_engine_,
+                         GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
 
       matmul_primitive_ = dnnl::matmul(matmul_pd);
       src_mem_ = CreateDnnlMemory(src_md, dnnl_engine_, input_tensor_data);
@@ -978,7 +998,9 @@ class MatMulFunctor {
       fwd_primitive_args_.emplace(DNNL_ARG_SRC, src_mem_);
       fwd_primitive_args_.emplace(DNNL_ARG_WEIGHTS, weights_mem_);
       fwd_primitive_args_.emplace(DNNL_ARG_DST, dst_mem_);
-      fwd_primitive_args_.emplace(DNNL_ARG_SCRATCHPAD, scratchpad_mem_);
+      if (HasDnnlScratchpad(matmul_pd.scratchpad_desc())) {
+        fwd_primitive_args_.emplace(DNNL_ARG_SCRATCHPAD, scratchpad_mem_);
+      }
 
       if (post_op_util_.HasBias()) {
         fwd_primitive_args_.emplace(DNNL_ARG_BIAS, bias_mem_);
@@ -1132,12 +1154,16 @@ class FusedMatMulGradOp : public OpKernel {
       }
 
       diff_bias_mem_.set_data_handle(GetTensorBuffer<Tgrad>(diff_bias_tensor));
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_.set_data_handle(
-          GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      if (scratchpad_size_ > 0) {
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_.set_data_handle(
+            GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
     } else {
       Init(context);
     }
@@ -1234,14 +1260,20 @@ class FusedMatMulGradOp : public OpKernel {
       diff_weight_mem_ =
           CreateDnnlMemory(diff_weight_md, onednn_engine_,
                            GetTensorBuffer<T>(diff_weight_tensor));
-      scratchpad_size_ = matmul_bwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_ =
-          dnnl::memory(matmul_bwd_pd.scratchpad_desc(), onednn_engine_,
-                       GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      scratchpad_size_ = 0;
+      if (HasDnnlScratchpad(matmul_bwd_pd.scratchpad_desc())) {
+        scratchpad_size_ =
+            matmul_bwd_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_ =
+            dnnl::memory(matmul_bwd_pd.scratchpad_desc(), onednn_engine_,
+                         GetTensorBuffer<T>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
 
       // Reorder diff weight for better performance.
       diff_weight_md_prefer = matmul_bwd_pd.diff_weights_desc();
@@ -1264,7 +1296,10 @@ class FusedMatMulGradOp : public OpKernel {
                              {DNNL_ARG_DIFF_DST, diff_dst_mem_},
                              {DNNL_ARG_DIFF_WEIGHTS, diff_weight_mem_prefer_},
                              {DNNL_ARG_DIFF_BIAS, diff_bias_mem_},
-                             {DNNL_ARG_SCRATCHPAD, scratchpad_mem_}};
+                             };
+      if (HasDnnlScratchpad(matmul_bwd_pd.scratchpad_desc())) {
+        fwd_primitive_args_.emplace(DNNL_ARG_SCRATCHPAD, scratchpad_mem_);
+      }
       is_init_ = true;
     } catch (dnnl::error& e) {
       string error_msg = "Status: " + std::to_string(e.status) +

@@ -2,10 +2,10 @@ startup --max_idle_secs=0
 
 
 build --action_env=TF_NEED_SYCL --repo_env=TF_NEED_SYCL
-build --action_env=TF_NEED_CUDA --repo_env=TF_NEED_CUDA
-build --action_env=TF_NEED_ROCM --repo_env=TF_NEED_ROCM
 build --action_env=TF_NEED_MKL --repo_env=TF_NEED_MKL
 build --action_env=ONEAPI_MKL_PATH --repo_env=ONEAPI_MKL_PATH
+build --action_env TF_NEED_CUDA=0 --repo_env TF_NEED_CUDA=0
+build --action_env TF_NEED_ROCM=0 --repo_env TF_NEED_ROCM=0
 
 # compilers
 build --action_env=CC --action_env=CXX --action_env=LD --action_env=HOST_C_COMPILER --action_env=HOST_CXX_COMPILER  --action_env=CMAKE_C_COMPILER --action_env=CMAKE_CXX_COMPILER
@@ -15,8 +15,8 @@ build --action_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
 build --repo_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
 
 # compiler flags
-build --action_env=CFLAGS --action_env=CXXFLAGS --action_env=LDFLAGS
-build   --repo_env=CFLAGS   --repo_env=CXXFLAGS   --repo_env=LDFLAGS
+build --action_env=CFLAGS --action_env=CXXFLAGS --action_env=LDFLAGS --action_env=LDFLAGS
+build   --repo_env=CFLAGS   --repo_env=CXXFLAGS   --repo_env=LDFLAGS --repo_env=LDFLAGS
 
 # paths
 build --action_env=L0_INSTALL_PATH --repo_env=L0_INSTALL_PATH
@@ -37,3 +37,5 @@ build --per_file_copt='(.*/)?bcm\.c@-O2'
 build --per_file_copt='^external/com_google_protobuf/.*@-Wno-unused-function'
 build --per_file_copt='^external/llvm_openmp/.*@-Wno-unused-but-set-variable,-Wno-switch,-Wno-vla-cxx-extension,-Wno-higher-precision-for-complex-division'
 build --per_file_copt='^external/xla/.*@-Wno-macro-redefined'
+
+build --copt='-Wno-recommended-option' --host_copt='-Wno-recommended-option'

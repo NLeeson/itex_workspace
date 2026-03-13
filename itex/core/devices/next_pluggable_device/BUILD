@@ -1,8 +1,8 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device")
+load("//itex:itex.bzl", "gpu_cc_library", "if_using_nextpluggable_device")
 
-cc_library(
+gpu_cc_library(
     name = "next_pluggable_device",
     srcs = ["gpu_device_plugin.cc"],
     hdrs = ["gpu_device_plugin.h"],

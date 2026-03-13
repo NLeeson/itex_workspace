@@ -480,6 +480,16 @@ CPU_KERNELS = [
 ]
 
 itex_xpu_library(
+    name = "cpu_kernel_init_hdr",
+    hdrs = [
+        "cpu_kernel_init.h",
+    ],
+    copts = tf_copts(),
+    visibility = ["//visibility:public"],
+    alwayslink = True,
+)
+
+itex_xpu_library(
     name = "cpu_kernel_impl",
     srcs = ["cpu_kernel_init.cc"],
     hdrs = [

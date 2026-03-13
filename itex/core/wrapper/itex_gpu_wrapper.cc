@@ -12,9 +12,12 @@ limitations under the License.
 
 #include <cpuid.h>
 #include <dlfcn.h>
+#include <link.h>
 #include <stdlib.h>
+#include <string>
 
 #include "itex/core/devices/device_backend_util.h"
+#include "itex/core/utils/env_var.h"
 #include "itex/core/utils/logging.h"
 #include "tensorflow/c/experimental/grappler/grappler.h"
 #include "tensorflow/c/experimental/pluggable_profiler/pluggable_profiler.h"
@@ -28,26 +31,123 @@ static void* handle;
 static void* LoadGpuLibrary() __attribute__((constructor));
 static void UnloadGpuLibrary() __attribute__((destructor));
 
-void* LoadGpuLibrary() {
-  setenv("ENABLE_PJRT_COMPATIBILITY", "1", 0);
+namespace {
 
-  const char* xlaFlags = std::getenv("TF_XLA_FLAGS");
-  if (xlaFlags) {
-    std::string newXlaFlags =
-        std::string(xlaFlags) + " --tf_xla_use_device_api=true";
-    setenv("TF_XLA_FLAGS", newXlaFlags.c_str(), 1);
-  } else {
-    setenv("TF_XLA_FLAGS", "--tf_xla_use_device_api=true", 0);
+std::string CurrentWrapperPath() {
+  Dl_info info;
+  if (dladdr(reinterpret_cast<void*>(&LoadGpuLibrary), &info) != 0 &&
+      info.dli_fname != nullptr) {
+    return info.dli_fname;
   }
+  return "unknown";
+}
+
+std::string LoadedLibraryPath(void* library_handle) {
+  if (library_handle == nullptr) return "unknown";
+  link_map* map = nullptr;
+  if (dlinfo(library_handle, RTLD_DI_LINKMAP, &map) == 0 && map != nullptr &&
+      map->l_name != nullptr && map->l_name[0] != '\0') {
+    return map->l_name;
+  }
+  return "unknown";
+}
+
+bool DebugWiringEnabled() {
+  static bool enabled = []() {
+    bool value = false;
+    auto status =
+        itex::ReadBoolFromEnvVar("ITEX_DEBUG_WIRING", false, &value);
+    if (!status.ok()) {
+      ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
+      return false;
+    }
+    return value;
+  }();
+  return enabled;
+}
+
+void LogGpuWrapperWiring(const std::string& event,
+                         const std::string& extra = "") {
+  if (!DebugWiringEnabled()) return;
+  ITEX_LOG(INFO) << "ITEX_DEBUG_WIRING component=gpu_wrapper event=" << event
+                 << " wrapper_path=" << CurrentWrapperPath()
+                 << " backend=GPU compiled={USING_NEXTPLUGGABLE_DEVICE="
+#ifdef USING_NEXTPLUGGABLE_DEVICE
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", INTEL_GPU_ONLY="
+#ifdef INTEL_GPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << "} " << extra;
+}
+
+bool HasVisibleGpuDevices(void* library_handle, int* device_count = nullptr) {
+  if (library_handle == nullptr) return false;
+  typedef int (*gpu_get_device_count_fn)(int*);
+  auto get_device_count = reinterpret_cast<gpu_get_device_count_fn>(
+      dlsym(library_handle, "_Z22ITEX_GPUGetDeviceCountPi"));
+  if (get_device_count == nullptr) {
+    const char* error_msg = dlerror();
+    LogGpuWrapperWiring("device_probe_missing",
+                        std::string("library_path=") +
+                            LoadedLibraryPath(library_handle) +
+                            (error_msg ? " error=" + std::string(error_msg) : ""));
+    return true;
+  }
+  int count = 0;
+  int status = get_device_count(&count);
+  if (device_count != nullptr) {
+    *device_count = count;
+  }
+  LogGpuWrapperWiring("device_probe",
+                      "library_path=" + LoadedLibraryPath(library_handle) +
+                          " status=" + std::to_string(status) +
+                          " device_count=" + std::to_string(count));
+  return status == 0 && count > 0;
+}
+
+}  // namespace
+
+void* LoadGpuLibrary() {
+  LogGpuWrapperWiring("load_start");
 
   handle = dlopen("libitex_gpu_internal.so", RTLD_NOW | RTLD_LOCAL);
   if (!handle) {
     itex_freeze_backend(ITEX_BACKEND_CPU);
     const char* error_msg = dlerror();
     ITEX_LOG(WARNING) << "Could not load dynamic library: " << error_msg;
+    LogGpuWrapperWiring("backend_fallback", "library=libitex_gpu_internal.so");
   } else {
+    int visible_device_count = 0;
+    if (!HasVisibleGpuDevices(handle, &visible_device_count)) {
+      LogGpuWrapperWiring(
+          "backend_no_visible_device",
+          "library_path=" + LoadedLibraryPath(handle) +
+              " device_count=" + std::to_string(visible_device_count));
+    }
+
+    setenv("ENABLE_PJRT_COMPATIBILITY", "1", 0);
+    const char* xlaFlags = std::getenv("TF_XLA_FLAGS");
+    if (xlaFlags) {
+      std::string newXlaFlags =
+          std::string(xlaFlags) + " --tf_xla_use_device_api=true";
+      setenv("TF_XLA_FLAGS", newXlaFlags.c_str(), 1);
+    } else {
+      setenv("TF_XLA_FLAGS", "--tf_xla_use_device_api=true", 0);
+    }
+    LogGpuWrapperWiring("xla_flags_configured",
+                        "library_path=" + LoadedLibraryPath(handle));
+
     itex_freeze_backend(ITEX_BACKEND_GPU);
     ITEX_LOG(INFO) << "Intel Extension for Tensorflow* GPU backend is loaded.";
+    LogGpuWrapperWiring("backend_loaded",
+                        "library=libitex_gpu_internal.so library_path=" +
+                            LoadedLibraryPath(handle));
   }
   return handle;
 }
@@ -391,6 +491,7 @@ const TFNPD_Api* TFNPD_InitPlugin(TFNPD_PluginParams* params,
   typedef const TFNPD_Api* (*tfnpd_init_internal)(TFNPD_PluginParams*,
                                                   TF_Status*);
   if (handle) {
+    LogGpuWrapperWiring("tfnpd_init", "handle_loaded=1");
     auto tfnpd_init = reinterpret_cast<tfnpd_init_internal>(
         dlsym(handle, "TFNPD_InitPlugin_Internal"));
     if (*tfnpd_init != nullptr) {
@@ -400,6 +501,7 @@ const TFNPD_Api* TFNPD_InitPlugin(TFNPD_PluginParams* params,
       ITEX_LOG(FATAL) << error_msg;
     }
   } else {
+    LogGpuWrapperWiring("tfnpd_init", "handle_loaded=0 fallback_api=1");
     params->struct_size = TFNPD_PLUGIN_PARAMS_STRUCT_SIZE;
     params->device_type = "XPU";
     params->compilation_device_name = "XLA_GPU_JIT";
@@ -428,6 +530,7 @@ const PJRT_Api* GetPjrtApi();
 const PJRT_Api* GetPjrtApi() {
   typedef const PJRT_Api* (*get_pjrt_api_internal)();
   if (handle) {
+    LogGpuWrapperWiring("get_pjrt_api", "handle_loaded=1");
     auto get_pjrt_api = reinterpret_cast<get_pjrt_api_internal>(
         dlsym(handle, "GetPjrtApi_Internal"));
     if (*get_pjrt_api != nullptr) {
@@ -438,6 +541,7 @@ const PJRT_Api* GetPjrtApi() {
       return nullptr;
     }
   } else {
+    LogGpuWrapperWiring("get_pjrt_api", "handle_loaded=0");
     return nullptr;
   }
 }

@@ -18,6 +18,7 @@ limitations under the License.
 #endif
 
 #include <algorithm>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,6 +38,49 @@ limitations under the License.
 
 extern bool itex::isxehpc_value;
 extern bool itex::hasxmx_value;
+
+namespace {
+
+bool DebugWiringEnabled() {
+  static bool enabled = []() {
+    bool value = false;
+    auto status =
+        itex::ReadBoolFromEnvVar("ITEX_DEBUG_WIRING", false, &value);
+    if (!status.ok()) {
+      ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
+      return false;
+    }
+    return value;
+  }();
+  return enabled;
+}
+
+void LogGraphWiring(const std::string& event, const std::string& extra = "") {
+  if (!DebugWiringEnabled()) return;
+  ITEX_LOG(INFO) << "ITEX_DEBUG_WIRING component=xpu_graph event=" << event
+                 << " backend=" << itex_backend_to_string(itex_get_backend())
+                 << " compiled={INTEL_CPU_ONLY="
+#ifdef INTEL_CPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", INTEL_GPU_ONLY="
+#ifdef INTEL_GPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", USING_NEXTPLUGGABLE_DEVICE="
+#ifdef USING_NEXTPLUGGABLE_DEVICE
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << "} " << extra;
+}
+
+}  // namespace
 
 void InitGlobalSetting(const OptimizerConfigFlags& config) {
   using env_pair = std::pair<std::string, bool>;
@@ -110,6 +154,14 @@ void InitGlobalSetting(const OptimizerConfigFlags& config) {
                       "MklCPUAllocator memory allocation.";
   }
 #endif  // INTEL_CPU_ONLY
+
+  std::ostringstream oss;
+  oss << "onednn_graph=" << (config.enable_onednn_graph ? "1" : "0")
+      << " remapper=" << (config.enable_remapper ? "1" : "0")
+      << " layout_opt=" << (config.enable_layout_opt ? "1" : "0")
+      << " auto_mixed_precision="
+      << (config.enable_auto_mixed_precision ? "1" : "0");
+  LogGraphWiring("global_settings", oss.str());
 }
 
 #ifndef CC_BUILD
@@ -151,6 +203,7 @@ void TF_InitGraph(TP_OptimizerRegistrationParams* params, TF_Status* status) {
 #endif  // INTEL_CPU_ONLY
   ITEX_LOG(INFO) << "ITEX_INIT Graph optimizer registered for device_type="
                  << params->device_type;
+  LogGraphWiring("init", std::string("device_type=") + params->device_type);
 
   // Initialize and print global settings.
   InitGlobalSetting(GetOptimizerConfigFlags());

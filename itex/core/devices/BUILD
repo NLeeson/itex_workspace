@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device")
+load("//itex:itex.bzl", "cc_library", "gpu_cc_library", "if_gpu_or_root_sycl_build", "if_gpu_or_root_sycl_using_nextpluggable_device")
 load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 
 cc_library(
@@ -25,9 +25,9 @@ cc_library(
     deps = [
         ":device_backend_util_hdr",
         "@local_config_tf//:tf_header_lib",
-    ] + if_sycl(
+    ] + if_gpu_or_root_sycl_build(
         ["//itex/core/devices/gpu:gpu_device_impl"],
-    ) + if_using_nextpluggable_device(
+    ) + if_gpu_or_root_sycl_using_nextpluggable_device(
         ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
     ),
     alwayslink = True,
@@ -58,7 +58,7 @@ cc_library(
     ],
 )
 
-cc_library(
+gpu_cc_library(
     name = "bfc_allocator",
     srcs = ["bfc_allocator.cc"],
     hdrs = [

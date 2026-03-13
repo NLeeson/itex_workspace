@@ -1,7 +1,7 @@
-load("//itex:itex.bzl", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "itex_gpu_library", "tf_copts")
 
 # List all kernels here.
-itex_xpu_library(
+itex_gpu_library(
     name = "special_math_op",
     srcs = [
         "special_math_op_bessel.cc",

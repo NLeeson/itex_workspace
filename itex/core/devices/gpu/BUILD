@@ -2,9 +2,9 @@ package(
     licenses = ["notice"],  # Apache 2.0
 )
 
-load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device")
+load("//itex:itex.bzl", "gpu_cc_library", "if_using_nextpluggable_device")
 
-cc_library(
+gpu_cc_library(
     name = "eigen_runtime_impl",
     srcs = ["eigen_itex_gpu_runtime.cc"],
     visibility = ["//visibility:public"],
@@ -17,7 +17,7 @@ cc_library(
     alwayslink = True,
 )
 
-cc_library(
+gpu_cc_library(
     name = "itex_gpu_runtime_imp",
     srcs = ["itex_gpu_runtime.cc"],
     visibility = ["//visibility:public"],
@@ -32,7 +32,7 @@ cc_library(
     alwayslink = True,
 )
 
-cc_library(
+gpu_cc_library(
     name = "gpu_device_impl",
     srcs = ["gpu_device_plugin.cc"],
     hdrs = [
@@ -47,7 +47,7 @@ cc_library(
     alwayslink = True,
 )
 
-cc_library(
+gpu_cc_library(
     name = "gpu_pool_allocator",
     hdrs = [
         "gpu_pool_allocator.h",
@@ -61,7 +61,7 @@ cc_library(
     ],
 )
 
-cc_library(
+gpu_cc_library(
     name = "gpu_info",
     srcs = ["gpu_info.cc"],
     hdrs = ["gpu_info.h"],
@@ -76,7 +76,7 @@ cc_library(
     alwayslink = True,
 )
 
-cc_library(
+gpu_cc_library(
     name = "eigen_stream_device",
     srcs = ["eigen_stream_device.cc"],
     hdrs = [

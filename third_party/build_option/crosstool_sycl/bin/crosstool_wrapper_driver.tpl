@@ -251,10 +251,10 @@ def main():
   leftover = [shlex.quote(s) for s in leftover]
   if args.link_stage:
     # link for SYCL object
-    return call_compiler(leftover, link=True, sycl=args.sycl_compile, cpu_only=args.DINTEL_CPU_ONLY, xetla=args.xetla, gpu_only=True)
+    return call_compiler(leftover, link=True, sycl=args.sycl_compile, cpu_only=args.DINTEL_CPU_ONLY, xetla=args.xetla, gpu_only=args.DINTEL_GPU_ONLY)
   else:
     # compile for SYCL object
-    return call_compiler(leftover, link=False, sycl=args.sycl_compile, cpu_only=args.DINTEL_CPU_ONLY, xetla=args.xetla, gpu_only=True)
+    return call_compiler(leftover, link=False, sycl=args.sycl_compile, cpu_only=args.DINTEL_CPU_ONLY, xetla=args.xetla, gpu_only=args.DINTEL_GPU_ONLY)
 
 if __name__ == '__main__':
   sys.exit(main())

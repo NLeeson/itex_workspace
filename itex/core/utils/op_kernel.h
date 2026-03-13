@@ -53,9 +53,9 @@ limitations under the License.
 #include "itex/core/devices/gpu/gpu_device_plugin.h"
 #endif  // INTEL_CPU_ONLY
 
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
 #define OUTPUT_SIZE 8
-#endif  // USING_NEXTPLUGGABLE_DEVICE
+#endif  // USING_NEXTPLUGGABLE_DEVICE && !INTEL_CPU_ONLY
 
 namespace itex {
 
@@ -425,7 +425,7 @@ class OpKernelContext {
 
   TF_OpKernelContext* Get() { return ctx_; }
 
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   void init_pjrt_buffer_cache(
       gtl::InlinedVector<TensorShape, OUTPUT_SIZE>* prev_shape,
       gtl::InlinedVector<std::shared_ptr<ITEX_PJRT_Buffer>, OUTPUT_SIZE>*
@@ -439,7 +439,7 @@ class OpKernelContext {
       itex_pjrt_buffer_ptr_->resize(output_num);
     }
   }
-#endif  // USING_NEXTPLUGGABLE_DEVICE
+#endif  // USING_NEXTPLUGGABLE_DEVICE && !INTEL_CPU_ONLY
 
  private:
   OpKernelContext() = delete;
@@ -490,7 +490,7 @@ class OpKernelContext {
 #ifndef INTEL_CPU_ONLY
   ResourceMgr* resource_mgr;
 #endif
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   ITEXNpdConfig& npdConfig_;
   gtl::InlinedVector<TensorShape, OUTPUT_SIZE>* output_shape_in_first_step_;
   gtl::InlinedVector<std::shared_ptr<ITEX_PJRT_Buffer>, OUTPUT_SIZE>*
@@ -659,7 +659,7 @@ class OpKernel {
 
   std::string TraceString(const OpKernelContext& ctx) const;
 
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   gtl::InlinedVector<TensorShape, OUTPUT_SIZE>* get_prev_shape() {
     return &output_shape_in_first_step_;
   }
@@ -673,7 +673,7 @@ class OpKernel {
  private:
   absl::string_view op_name;
   absl::string_view op_type;
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   gtl::InlinedVector<TensorShape, OUTPUT_SIZE> output_shape_in_first_step_;
   gtl::InlinedVector<std::shared_ptr<ITEX_PJRT_Buffer>, OUTPUT_SIZE>
       itex_pjrt_buffer_;
@@ -859,7 +859,7 @@ inline void RunWithSyncHandler(
 inline void RunOrWaitUntilFinish(
     OpKernelContext* context, OpKernel* op,
     AsyncOpKernel::DoneCallback* callback = nullptr) {
-#ifdef USING_NEXTPLUGGABLE_DEVICE
+#if defined(USING_NEXTPLUGGABLE_DEVICE) && !defined(INTEL_CPU_ONLY)
   auto& npdConfig = ITEXNpdConfig::getNpdConfig();
   if (npdConfig.ifUsingNextPluggableDevice()) {
     context->init_pjrt_buffer_cache(op->get_prev_shape(),

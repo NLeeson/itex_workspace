@@ -1,6 +1,6 @@
-load("//itex:itex.bzl", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "itex_gpu_library", "tf_copts")
 
-itex_xpu_library(
+itex_gpu_library(
     name = "linalg",
     copts = tf_copts(),
     linkstatic = 1,
@@ -24,7 +24,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "cholesky_op",
     srcs = ["cholesky_op.cc"],
     copts = tf_copts(),
@@ -37,7 +37,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fused_einsum_hdrs",
     hdrs = ["fused_einsum_helper.h"],
     copts = tf_copts(),
@@ -49,7 +49,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "einsum_op_impl",
     srcs = ["einsum_op_impl.cc"],
     hdrs = [
@@ -70,7 +70,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "determinant_op",
     srcs = ["determinant_op.cc"],
     copts = tf_copts(),
@@ -83,7 +83,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "eye_functor",
     srcs = ["eye_functor.cc"],
     hdrs = ["eye_functor.h"],
@@ -96,7 +96,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_diag_op",
     srcs = [
         "matrix_diag_op.cc",
@@ -112,7 +112,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_inverse_op",
     srcs = ["matrix_inverse_op.cc"],
     copts = tf_copts(),
@@ -124,7 +124,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_set_diag_op",
     srcs = [
         "matrix_set_diag_op.cc",
@@ -140,7 +140,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_solve_op",
     srcs = ["matrix_solve_op.cc"],
     copts = tf_copts(),
@@ -153,7 +153,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_triangular_solve_op",
     srcs = ["matrix_triangular_solve_op.cc"],
     hdrs = ["matrix_triangular_solve_op_impl.h"],
@@ -168,7 +168,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "lu_op",
     srcs = ["lu_op.cc"],
     copts = tf_copts(),
@@ -181,7 +181,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "qr_op",
     srcs = ["qr_op.cc"],
     hdrs = ["qr_op_impl.h"],
@@ -195,7 +195,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "tridiagonal_solve_op",
     srcs = ["tridiagonal_solve_op.cc"],
     copts = tf_copts(),
@@ -208,7 +208,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "self_adjoint_eig_v2_op",
     srcs = ["self_adjoint_eig_v2_op.cc"],
     copts = tf_copts(),
@@ -221,7 +221,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "svd_op",
     srcs = ["svd_op.cc"],
     copts = tf_copts(),

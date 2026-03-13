@@ -1,5 +1,6 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
+load("//itex:itex.bzl", "itex_xpu_binary")
 
 exports_files(["LICENSE"])
 
@@ -98,6 +99,20 @@ cc_binary(
     ] + select({
         "//third_party/onednn:build_with_onednn_graph": ["@onednn_cpu_eigen//:onednn_graph_cpu_lib"],
         "//conditions:default": ["@onednn_cpu_eigen//:onednn_cpu_lib"],
+    }),
+)
+
+itex_xpu_binary(
+    name = "libonednn_gpu_so.so",
+    set_target = "gpu_orig_backend",
+    linkopts = [
+        "-Wl,-rpath,$$ORIGIN",
+    ],
+    linkshared = True,
+    visibility = ["//visibility:public"],
+    deps = select({
+        "//third_party/onednn:build_with_onednn_graph": ["@onednn_gpu//:onednn_graph_gpu"],
+        "//conditions:default": ["@onednn_gpu//:onednn_gpu"],
     }),
 )
 

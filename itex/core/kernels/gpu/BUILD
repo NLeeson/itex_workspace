@@ -1,4 +1,4 @@
-load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device", "itex_xetla_binary", "itex_xetla_library", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "cc_library", "if_using_nextpluggable_device", "itex_gpu_library", "itex_xetla_binary", "itex_xetla_library", "tf_copts")
 
 package(
     licenses = ["notice"],  # Apache 2.0
@@ -12,10 +12,14 @@ cc_import(
 
 itex_xetla_binary(
     name = "libitex_gpu_xetla.so",
+    linkopts = ["-Wl,-rpath,$$ORIGIN"],
     linkshared = True,
     set_target = "gpu_orig_backend",
     visibility = ["//visibility:public"],
-    deps = [
+    deps = select({
+        "//third_party/onednn:build_with_onednn_graph": ["@onednn_gpu//:onednn_graph_gpu"],
+        "//conditions:default": ["@onednn_gpu//:onednn_gpu"],
+    }) + [
         "//itex/core/kernels/gpu/xetla:fmha_op",
         "//itex/core/kernels/gpu/xetla:fused_einsum_impl",
         "//itex/core/kernels/gpu/xetla:mha_op",
@@ -23,7 +27,7 @@ itex_xetla_binary(
     ],
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "aggregate_ops",
     srcs = ["aggregate_ops.cc"],
     hdrs = [
@@ -39,7 +43,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "aggregate_hdrs",
     hdrs = ["aggregate_ops.h"],
     copts = tf_copts(),
@@ -51,7 +55,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "reduction_utils",
     srcs = ["reduction_utils.cc"],
     hdrs = ["reduction_utils.h"],
@@ -64,7 +68,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "argmax_op",
     srcs = ["argmax_op.cc"],
     hdrs = ["argmax_op.h"],
@@ -78,7 +82,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "tensor_to_hash_bucket_op",
     srcs = [
         "tensor_to_hash_bucket_op.cc",
@@ -95,7 +99,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "ctc_op",
     srcs = ["ctc_loss_op.cc"],
     copts = tf_copts(),
@@ -108,7 +112,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "bucketize_op",
     srcs = ["bucketize_op.cc"],
     hdrs = [
@@ -124,7 +128,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "histogram_op",
     srcs = ["histogram_op.cc"],
     hdrs = [
@@ -139,7 +143,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "softplus_op",
     srcs = ["softplus_op.cc"],
     hdrs = ["softplus_op.h"],
@@ -152,7 +156,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "cross_op",
     srcs = ["cross_op.cc"],
     hdrs = ["cross_op.h"],
@@ -165,7 +169,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "softsign_op",
     srcs = ["softsign_op.cc"],
     hdrs = ["softsign_op.h"],
@@ -178,7 +182,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "batchtospace_op",
     srcs = ["batchtospace_op.cc"],
     hdrs = [
@@ -195,7 +199,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "batch_norm_ops",
     srcs = [
         "batch_norm_op.cc",
@@ -213,7 +217,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "betainc_op",
     srcs = ["betainc_op.cc"],
     hdrs = [
@@ -228,7 +232,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "spacetodepth_op",
     srcs = ["spacetodepth_op.cc"],
     hdrs = [
@@ -243,7 +247,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "bias_op",
     srcs = ["bias_op.cc"],
     hdrs = [
@@ -261,7 +265,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "bincount_op",
     srcs = ["bincount_op.cc"],
     hdrs = [
@@ -277,7 +281,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "bitcast_op",
     srcs = ["bitcast_op.cc"],
     copts = tf_copts(),
@@ -289,7 +293,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "beam_select_ops",
     srcs = [
         "beam_select.cc",
@@ -303,7 +307,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "depthtospace_op",
     srcs = [
         "depthtospace_op.cc",
@@ -319,7 +323,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "colorspace_ops",
     srcs = [
         "colorspace_op.cc",
@@ -335,7 +339,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "inplace_ops",
     srcs = [
         "inplace_ops.cc",
@@ -354,7 +358,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "broadcast_to_op",
     srcs = ["broadcast_to_op.cc"],
     hdrs = [
@@ -370,7 +374,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "cast_op",
     srcs = [
         "cast_op.cc",
@@ -389,7 +393,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "check_numerics_op",
     srcs = [
         "check_numerics_op.cc",
@@ -404,7 +408,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "compare_and_bitpack",
     srcs = [
         "compare_and_bitpack_op.cc",
@@ -420,7 +424,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "concat_v2_op",
     srcs = ["concat_op.cc"],
     hdrs = ["concat_lib.h"],
@@ -433,7 +437,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "constant_ops",
     srcs = ["constant_ops.cc"],
     copts = tf_copts(),
@@ -446,7 +450,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "conv_ops",
     srcs = [
         "conv_grad_filter_ops.cc",
@@ -467,7 +471,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "data_format_ops",
     srcs = ["data_format_ops.cc"],
     hdrs = ["data_format_ops.h"],
@@ -480,7 +484,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "debug_ops",
     srcs = ["debug_ops.cc"],
     hdrs = ["debug_ops.h"],
@@ -494,7 +498,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dense_update_functor",
     hdrs = ["dense_update_functor.h"],
     copts = tf_copts(),
@@ -506,7 +510,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dense_update_op",
     srcs = ["dense_update_ops.cc"],
     hdrs = ["training_op_helpers.h"],
@@ -520,7 +524,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dilation_op",
     srcs = [
         "dilation_ops.cc",
@@ -539,7 +543,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "diag_op",
     srcs = ["diag_op.cc"],
     hdrs = ["diag_op.h"],
@@ -552,7 +556,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dynamic_stitch_op",
     srcs = ["dynamic_stitch_op.cc"],
     hdrs = ["gpu_device_array.h"],
@@ -565,7 +569,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dynamic_partition_op",
     srcs = ["dynamic_partition_op.cc"],
     hdrs = [
@@ -584,7 +588,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "ops_util",
     srcs = ["ops_util.cc"],
     hdrs = ["ops_util.h"],
@@ -597,7 +601,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "extract_image_patches_op",
     srcs = [
         "extract_image_patches_op.cc",
@@ -614,7 +618,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "extract_volume_patches_op",
     srcs = [
         "extract_volume_patches_op.cc",
@@ -631,7 +635,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fft_ops",
     srcs = ["fft_ops.cc"],
     hdrs = ["fft_ops.h"],
@@ -644,7 +648,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fused_batch_norm_op",
     srcs = ["fused_batch_norm_op.cc"],
     hdrs = [
@@ -662,7 +666,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fused_binary_op",
     srcs = ["fused_binary_op.cc"],
     hdrs = [
@@ -677,7 +681,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "gather_op",
     srcs = ["gather_op.cc"],
     hdrs = [
@@ -693,7 +697,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "gather_nd_op",
     srcs = [
         "gather_nd_op.cc",
@@ -712,7 +716,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "in_topk_op",
     srcs = [
         "in_topk_op.cc",
@@ -734,7 +738,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "instance_norm_op",
     srcs = ["instance_norm_op.cc"],
     hdrs = [
@@ -750,7 +754,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "l2loss_op",
     srcs = ["l2loss_op.cc"],
     hdrs = ["full_reduction_kernels.h"],
@@ -763,7 +767,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "layer_norm_op",
     srcs = ["layer_norm_op.cc"],
     hdrs = [
@@ -779,7 +783,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "lrn_op",
     srcs = ["lrn_op.cc"],
     copts = tf_copts(),
@@ -791,7 +795,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matrix_band_part_op",
     srcs = ["matrix_band_part_op.cc"],
     hdrs = ["matrix_band_part_op.h"],
@@ -804,7 +808,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "matmul_op",
     srcs = ["matmul_op.cc"],
     hdrs = [
@@ -817,7 +821,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "quantized_matmul",
     srcs = ["quantized_matmul.cc"],
     hdrs = [
@@ -836,7 +840,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "quantized_concat_op",
     copts = tf_copts(),
     linkstatic = 1,
@@ -866,7 +870,7 @@ cc_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "quantized_conv",
     srcs = ["quantized_conv_ops.cc"],
     hdrs = [
@@ -886,7 +890,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "multinomial_op",
     srcs = [
         "multinomial_op.cc",
@@ -908,7 +912,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "nextafter_op",
     srcs = ["nextafter_op.cc"],
     hdrs = [
@@ -925,7 +929,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "quantize_and_dequantize_op",
     srcs = ["quantize_and_dequantize_op.cc"],
     hdrs = [
@@ -941,7 +945,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "dequantize_reshape_op",
     srcs = ["dequantize_reshape_op.cc"],
     copts = tf_copts(),
@@ -953,7 +957,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "reduction_ops",
     srcs = [
         "reduction_ops_all.cc",
@@ -983,7 +987,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "one_hot_op",
     srcs = ["one_hot_op.cc"],
     hdrs = ["one_hot_op.h"],
@@ -996,7 +1000,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "rnn_ops",
     srcs = [
         "rnn_ops.cc",
@@ -1017,7 +1021,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "pack_op",
     srcs = [
         "concat_lib.cc",
@@ -1036,7 +1040,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "pad_op",
     srcs = ["pad_op.cc"],
     hdrs = ["pad_op.h"],
@@ -1049,7 +1053,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "parameterized_truncated_normal_op",
     srcs = ["parameterized_truncated_normal_op.cc"],
     hdrs = ["parameterized_truncated_normal_op.h"],
@@ -1063,7 +1067,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "avg_pooling_tmp",
     srcs = [
         "avgpooling_op.cc",
@@ -1077,7 +1081,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "pooling_ops",
     srcs = [
         "avgpooling_op.cc",
@@ -1093,7 +1097,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "population_count_op",
     srcs = ["population_count_op.cc"],
     hdrs = ["population_count_op.h"],
@@ -1141,7 +1145,7 @@ cc_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "random_op",
     srcs = [
         "random_op.cc",
@@ -1161,7 +1165,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fused_random_op",
     srcs = [
         "fused_random_op.cc",
@@ -1181,7 +1185,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "relu_op",
     srcs = ["relu_op.cc"],
     hdrs = [
@@ -1198,7 +1202,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "resize_nearest_neighbor_op",
     srcs = ["resize_nearest_neighbor_op.cc"],
     hdrs = [
@@ -1214,7 +1218,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "resource_variable_ops",
     srcs = ["resource_variable_ops.cc"],
     hdrs = [
@@ -1234,7 +1238,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "reverse_op",
     srcs = ["reverse_op.cc"],
     hdrs = [
@@ -1249,7 +1253,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "reverse_sequence_op",
     srcs = ["reverse_sequence_op.cc"],
     hdrs = [
@@ -1264,7 +1268,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "roll_op",
     srcs = ["roll_op.cc"],
     hdrs = [
@@ -1279,7 +1283,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "scan_ops",
     srcs = [
         "scan_ops_1.cc",
@@ -1299,7 +1303,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "scatter_nd_op",
     srcs = ["scatter_nd_op.cc"],
     hdrs = [
@@ -1318,7 +1322,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "scatter_op",
     srcs = ["scatter_op.cc"],
     hdrs = [
@@ -1336,7 +1340,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "searchsorted_op",
     srcs = ["searchsorted_op.cc"],
     hdrs = ["searchsorted_op.h"],
@@ -1349,7 +1353,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "slice_op",
     srcs = ["slice_op.cc"],
     hdrs = [
@@ -1365,7 +1369,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "snapshot_op",
     srcs = ["snapshot_op.cc"],
     hdrs = ["snapshot_op.h"],
@@ -1378,7 +1382,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "softmax_op",
     srcs = ["softmax_op.cc"],
     hdrs = [
@@ -1394,7 +1398,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "spacetobatch_op",
     srcs = [
         "spacetobatch_functor_gpu.cc",
@@ -1413,7 +1417,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_concat_op",
     srcs = ["sparse_concat_op.cc"],
     hdrs = [
@@ -1430,7 +1434,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "fill_empty_rows_functor",
     srcs = ["fill_empty_rows_functor.cc"],
     hdrs = [
@@ -1446,7 +1450,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_fill_empty_rows_op",
     srcs = ["sparse_fill_empty_rows_op.cc"],
     hdrs = [
@@ -1465,7 +1469,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "ragged_fill_empty_rows_op",
     srcs = ["ragged_fill_empty_rows_op.cc"],
     hdrs = [
@@ -1485,7 +1489,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_reorder_op",
     srcs = ["sparse_reorder_op.cc"],
     hdrs = ["sparse_reorder_op.h"],
@@ -1499,7 +1503,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_slice_grad_op",
     srcs = ["sparse_slice_grad_op.cc"],
     hdrs = [
@@ -1514,7 +1518,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_slice_op",
     srcs = ["sparse_slice_op.cc"],
     hdrs = [
@@ -1530,7 +1534,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_split_op",
     srcs = ["sparse_split_op.cc"],
     hdrs = [
@@ -1548,7 +1552,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_tensor_dense_mat_mul_op",
     srcs = ["sparse_tensor_dense_mat_mul_op.cc"],
     hdrs = ["sparse_tensor_dense_mat_mul_op.h"],
@@ -1561,7 +1565,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_to_dense_op",
     srcs = [
         "sparse_to_dense_op.cc",
@@ -1578,7 +1582,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_math_ops",
     srcs = [
         "sparse_reshape_op.cc",
@@ -1604,7 +1608,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sparse_xent_op",
     srcs = [
         "sparse_xent_op.cc",
@@ -1623,7 +1627,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "split_op",
     srcs = [
         "split_lib.cc",
@@ -1642,7 +1646,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "split_v_op",
     srcs = [
         "split_lib.cc",
@@ -1661,7 +1665,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "stateful_random_ops",
     srcs = [
         "stateful_random_ops.cc",
@@ -1684,7 +1688,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "stateless_random_ops",
     srcs = [
         "stateless_random_ops.cc",
@@ -1704,7 +1708,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "stateless_random_gamma_op_v2",
     srcs = [
         "stateless_random_gamma_op_v2.cc",
@@ -1725,7 +1729,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "stateless_random_gamma_op_v3",
     srcs = [
         "stateless_random_gamma_op_v3.cc",
@@ -1746,7 +1750,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "stateless_random_ops_v2",
     srcs = [
         "stateless_random_ops_v2.cc",
@@ -1767,7 +1771,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "strided_slice_op",
     srcs = [
         "strided_slice_op.cc",
@@ -1791,7 +1795,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "transpose_op",
     srcs = [
         "transpose_op.cc",
@@ -1806,7 +1810,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "tile_ops",
     srcs = [
         "tile_functor_gpu_bool.cc",
@@ -1843,7 +1847,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "training_ops",
     srcs = [
         "training_op_ada_max.cc",
@@ -1878,7 +1882,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "tridiagonal_matmul_op",
     srcs = [
         "tridiagonal_matmul_op.cc",
@@ -1892,7 +1896,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "segment_reduction_ops",
     srcs = ["segment_reduction_ops.cc"],
     hdrs = [
@@ -1908,7 +1912,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "topk_functor_header",
     hdrs = ["topk_op.h"],
     copts = tf_copts(),
@@ -1920,7 +1924,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "topk_op",
     srcs = [
         "topk_op.cc",
@@ -1936,7 +1940,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "sequence_ops",
     srcs = ["sequence_ops.cc"],
     copts = tf_copts(),
@@ -1948,7 +1952,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "resize_bilinear_ops",
     srcs = ["resize_bilinear_op.cc"],
     hdrs = [
@@ -1965,7 +1969,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "select_op",
     srcs = ["select_op.cc"],
     hdrs = ["cwise_op.h"],
@@ -1979,7 +1983,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "unary_and_binary_kernels",
     srcs = ["unary_and_binary_ops"],
     hdrs = ["cwise_op_clip.h"],
@@ -2077,7 +2081,7 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "unique_op",
     srcs = ["unique_op.cc"],
     hdrs = [
@@ -2094,7 +2098,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "unpack_op",
     srcs = [
         "split_lib.cc",
@@ -2113,7 +2117,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "where_op",
     srcs = ["where_op.cc"],
     hdrs = [
@@ -2129,7 +2133,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "xent_op",
     srcs = ["xent_op.cc"],
     hdrs = [
@@ -2145,7 +2149,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "group_norm_ops",
     srcs = [
         "group_norm_op.cc",
@@ -2165,7 +2169,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "qk_rotary_ops",
     srcs = [
         "qk_rotary_pos_emb.cc",
@@ -2179,7 +2183,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "rms_norm_ops",
     srcs = [
         "rms_norm_op.cc",
@@ -2196,7 +2200,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "tensorarray_ops",
     srcs = [
         "concat_lib.cc",
@@ -2221,7 +2225,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "isTensorFloat32Enabled_op",
     srcs = ["isTensorFloat32Enabled_op.cc"],
     hdrs = ["isTensorFloat32Enabled_op.h"],
@@ -2235,7 +2239,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "test_ops",
     srcs = ["test_ops.cc"],
     hdrs = ["test_ops.h"],
@@ -2249,7 +2253,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "temporary_variable_ops",
     srcs = if_using_nextpluggable_device(
         ["variable_ops.cc"],
@@ -2264,7 +2268,7 @@ itex_xpu_library(
     alwayslink = True,
 )
 
-itex_xpu_library(
+itex_gpu_library(
     name = "collective_ops",
     srcs = [
         "collective_ops.cc",
@@ -2407,7 +2411,16 @@ GPU_KERNELS = [
     ":collective_ops",
 ]
 
-itex_xpu_library(
+itex_gpu_library(
+    name = "gpu_kernel_init_hdr",
+    hdrs = [
+        "gpu_kernel_init.h",
+    ],
+    visibility = ["//visibility:public"],
+    alwayslink = True,
+)
+
+itex_gpu_library(
     name = "gpu_kernel_impl",
     srcs = ["gpu_kernel_init.cc"],
     hdrs = [

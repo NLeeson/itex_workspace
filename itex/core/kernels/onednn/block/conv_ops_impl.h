@@ -182,8 +182,12 @@ class OneDnnConvOp : public OpKernel {
                    context->allocate_temp(DataTypeToEnum<Tinput>::v(),
                                           TensorShape({scratchpad_size_}),
                                           scratchpad_tensor_.get()));
-    scratchpad_mem_.set_data_handle(
-        GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+    if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+      scratchpad_mem_.set_data_handle(
+          GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+    } else {
+      scratchpad_mem_ = dnnl::memory();
+    }
 
     AllocateOutputTensor(context, fwd_pd_, dst_dims_onednn_, data_fmt_onednn_,
                          &dst_onednn_shape_, dst_shape_, &dst_tensor_);
@@ -493,20 +497,27 @@ class OneDnnConvOp : public OpKernel {
           fwd_pd_.dst_desc(), onednn_engine_,
           reinterpret_cast<Tsummand*>(GetTensorBuffer<Toutput>(dst_tensor_)));
 
-      scratchpad_size_ = fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_ =
-          dnnl::memory(fwd_pd_.scratchpad_desc(), onednn_engine_,
-                       GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+      scratchpad_size_ = 0;
+      if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+        scratchpad_size_ = fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_ =
+            dnnl::memory(fwd_pd_.scratchpad_desc(), onednn_engine_,
+                         GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
 
       // Execute convolution
       fwd_primitives_args_.insert({DNNL_ARG_SRC, src_mem_});
       fwd_primitives_args_.insert({DNNL_ARG_WEIGHTS, filter_mem_});
       fwd_primitives_args_.insert({DNNL_ARG_DST, dst_mem_});
-      fwd_primitives_args_.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem_});
+      if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+        fwd_primitives_args_.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem_});
+      }
 
       is_init_ = true;
     } catch (dnnl::error& e) {
@@ -1423,8 +1434,12 @@ class OneDnnQuantizeV2WithQuantizedConv2DOp
                    context->allocate_temp(DataTypeToEnum<Tinput>::v(),
                                           TensorShape({this->scratchpad_size_}),
                                           this->scratchpad_tensor_.get()));
-    this->scratchpad_mem_.set_data_handle(
-        GetTensorBuffer<Tinput>(this->scratchpad_tensor_.get()));
+    if (HasDnnlScratchpad(this->fwd_pd_.scratchpad_desc())) {
+      this->scratchpad_mem_.set_data_handle(
+          GetTensorBuffer<Tinput>(this->scratchpad_tensor_.get()));
+    } else {
+      this->scratchpad_mem_ = dnnl::memory();
+    }
 
     AllocateOutputTensor(context, this->fwd_pd_, this->dst_dims_onednn_,
                          this->data_fmt_onednn_, &this->dst_onednn_shape_,
@@ -1752,22 +1767,29 @@ class OneDnnQuantizeV2WithQuantizedConv2DOp
                            reinterpret_cast<Tsummand*>(
                                GetTensorBuffer<Toutput>(this->dst_tensor_)));
 
-      this->scratchpad_size_ =
-          this->fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
-      OP_REQUIRES_OK(
-          context, context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                          TensorShape({this->scratchpad_size_}),
-                                          this->scratchpad_tensor_.get()));
-      this->scratchpad_mem_ =
-          dnnl::memory(this->fwd_pd_.scratchpad_desc(), this->onednn_engine_,
-                       GetTensorBuffer<Tinput>(this->scratchpad_tensor_.get()));
+      if (HasDnnlScratchpad(this->fwd_pd_.scratchpad_desc())) {
+        this->scratchpad_size_ =
+            this->fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
+        OP_REQUIRES_OK(
+            context, context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                            TensorShape({this->scratchpad_size_}),
+                                            this->scratchpad_tensor_.get()));
+        this->scratchpad_mem_ =
+            dnnl::memory(this->fwd_pd_.scratchpad_desc(), this->onednn_engine_,
+                         GetTensorBuffer<Tinput>(this->scratchpad_tensor_.get()));
+      } else {
+        this->scratchpad_size_ = 0;
+        this->scratchpad_mem_ = dnnl::memory();
+      }
 
       // Execute convolution
       this->fwd_primitives_args_.insert({DNNL_ARG_SRC, this->src_mem_});
       this->fwd_primitives_args_.insert({DNNL_ARG_WEIGHTS, this->filter_mem_});
       this->fwd_primitives_args_.insert({DNNL_ARG_DST, this->dst_mem_});
-      this->fwd_primitives_args_.insert(
-          {DNNL_ARG_SCRATCHPAD, this->scratchpad_mem_});
+      if (HasDnnlScratchpad(this->fwd_pd_.scratchpad_desc())) {
+        this->fwd_primitives_args_.insert(
+            {DNNL_ARG_SCRATCHPAD, this->scratchpad_mem_});
+      }
 
       this->is_init_ = true;
     } catch (dnnl::error& e) {

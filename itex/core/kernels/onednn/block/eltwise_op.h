@@ -134,21 +134,26 @@ class OneDnnEltwiseBaseOp : public OpKernel {
                                       static_cast<void*>(dst_data));
 
       Tensor scratchpad_tensor;
-      int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size}),
-                                            &scratchpad_tensor));
-      auto scratchpad_mem =
-          dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
-                       GetTensorBuffer<T>(&scratchpad_tensor));
+      dnnl::memory scratchpad_mem;
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size}),
+                                              &scratchpad_tensor));
+        scratchpad_mem =
+            dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
+                         GetTensorBuffer<T>(&scratchpad_tensor));
+      }
 
       // execute eltwise
       auto onednn_stream = CreateDnnlStream(*context, onednn_engine);
       std::unordered_map<int, memory> fwd_primitive_args = {
           {DNNL_ARG_SRC, is_src_reordered ? reorder_mem : src_mem},
-          {DNNL_ARG_DST, dst_mem},
-          {DNNL_ARG_SCRATCHPAD, scratchpad_mem}};
+          {DNNL_ARG_DST, dst_mem}};
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        fwd_primitive_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+      }
       fwd_primitive.execute(onednn_stream, fwd_primitive_args);
     } catch (dnnl::error& e) {
       string error_msg = "Status: " + std::to_string(e.status) +
@@ -378,15 +383,18 @@ class OneDnnEltwiseGradBaseOp : public OpKernel {
                            GetTensorBuffer<T>(diff_src_tensor));
 
       Tensor scratchpad_tensor;
-      int64 scratchpad_size =
-          eltwise_bwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size}),
-                                            &scratchpad_tensor));
-      auto scratchpad_mem =
-          dnnl::memory(eltwise_bwd_pd.scratchpad_desc(), onednn_engine,
-                       GetTensorBuffer<T>(&scratchpad_tensor));
+      dnnl::memory scratchpad_mem;
+      if (HasDnnlScratchpad(eltwise_bwd_pd.scratchpad_desc())) {
+        int64 scratchpad_size =
+            eltwise_bwd_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size}),
+                                              &scratchpad_tensor));
+        scratchpad_mem =
+            dnnl::memory(eltwise_bwd_pd.scratchpad_desc(), onednn_engine,
+                         GetTensorBuffer<T>(&scratchpad_tensor));
+      }
 
       // execute eltwise bwd
       auto onednn_stream = CreateDnnlStream(*context, onednn_engine);
@@ -395,8 +403,10 @@ class OneDnnEltwiseGradBaseOp : public OpKernel {
            is_src_reordered ? src_reorder_mem : src_mem},
           {DNNL_ARG_DIFF_DST,
            is_diff_dst_reordered ? diff_dst_reorder_mem : diff_dst_mem},
-          {DNNL_ARG_DIFF_SRC, diff_src_mem},
-          {DNNL_ARG_SCRATCHPAD, scratchpad_mem}};
+          {DNNL_ARG_DIFF_SRC, diff_src_mem}};
+      if (HasDnnlScratchpad(eltwise_bwd_pd.scratchpad_desc())) {
+        bwd_primitives_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+      }
       eltwise_bwd_primitive.execute(onednn_stream, bwd_primitives_args);
     } catch (dnnl::error& e) {
       string error_msg = "Status: " + std::to_string(e.status) +

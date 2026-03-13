@@ -20,7 +20,7 @@ def tf_copts(android_optimization_level_override = "-O2", is_external = False):
         "-ftemplate-depth=900",
         "-msse3",
         "-pthread",
-    ] + if_using_nextpluggable_device(
+    ] + if_gpu_or_root_sycl_using_nextpluggable_device(
         ["-DUSING_NEXTPLUGGABLE_DEVICE"],
     )
     return copts_list
@@ -59,6 +59,13 @@ def if_cc_threadpool_build(if_true, if_false = []):
 def if_gpu_backend(if_true, if_false = []):
     return selects.with_or({
         ("@itex_local_config_sycl//sycl:using_sycl", "@intel_extension_for_tensorflow//itex:xpu_build"): if_true,
+        "//conditions:default": if_false,
+    })
+
+def if_gpu_or_root_sycl_build(if_true, if_false = []):
+    return select({
+        "@intel_extension_for_tensorflow//itex:gpu_build": if_true,
+        "@intel_extension_for_tensorflow//itex:root_sycl_build": if_true,
         "//conditions:default": if_false,
     })
 
@@ -130,15 +137,16 @@ transition_rule = rule(
     },
 )
 
-def cc_binary(name, set_target = None, srcs = [], deps = [], *argc, **kwargs):
+def cc_binary(name, set_target = None, srcs = [], deps = [], inject_gpu_copts = True, *argc, **kwargs):
     cc_binary_name = name.replace("lib", "").replace(".so", "")
     transition_rule(
         name = name,
         actual_binary = ":%s" % cc_binary_name,
         set_target = set_target,
     )
-    kwargs["copts"] = kwargs.get("copts", []) + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_gpu_backend(["-DINTEL_GPU_ONLY"])
+    if inject_gpu_copts:
+        kwargs["copts"] = kwargs.get("copts", []) + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"])
+        kwargs["linkopts"] = kwargs.get("linkopts", []) + if_gpu_backend(["-DINTEL_GPU_ONLY"])
     native.cc_binary(
         name = cc_binary_name,
         srcs = srcs,
@@ -147,8 +155,8 @@ def cc_binary(name, set_target = None, srcs = [], deps = [], *argc, **kwargs):
     )
 
 def cc_library(name, srcs = [], deps = [], *argc, **kwargs):
-    kwargs["copts"] = kwargs.get("copts", []) + cpu_copts() + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_gpu_backend(["-DINTEL_GPU_ONLY"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["copts"] = kwargs.get("copts", []) + cpu_copts() + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
     native.cc_library(
         name = name,
         srcs = srcs,
@@ -156,9 +164,36 @@ def cc_library(name, srcs = [], deps = [], *argc, **kwargs):
         **kwargs
     )
 
+def gpu_cc_library(name, srcs = [], deps = [], *argc, **kwargs):
+    kwargs["copts"] = kwargs.get("copts", []) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    native.cc_library(
+        name = name,
+        srcs = srcs,
+        deps = deps,
+        **kwargs
+    )
+
+def itex_gpu_library(name, srcs = [], hdrs = [], deps = [], *argc, **kwargs):
+    deps = deps + if_gpu_or_root_sycl_build([
+        "//itex/core/devices/gpu:eigen_stream_device",
+    ])
+    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    native.cc_library(
+        name = name,
+        srcs = srcs,
+        hdrs = hdrs,
+        deps = deps,
+        **kwargs
+    )
+
 def itex_xetla_library(name, srcs = [], hdrs = [], deps = [], *argc, **kwargs):
-    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + cpu_copts() + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_xetla(["--xetla"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_backend(["-DINTEL_GPU_ONLY"]) + if_xetla(["--xetla"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    deps = deps + if_gpu_or_root_sycl_build([
+        "//itex/core/devices/gpu:eigen_stream_device",
+    ])
+    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_xetla(["--xetla"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_xetla(["--xetla"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
     native.cc_library(
         name = name,
         srcs = srcs,
@@ -174,8 +209,8 @@ def itex_xetla_binary(name, set_target = None, srcs = [], deps = [], *argc, **kw
         actual_binary = ":%s" % xpu_binary_name,
         set_target = set_target,
     )
-    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_xetla(["--xetla"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_xetla(["--xetla"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_xetla(["--xetla"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_xetla(["--xetla"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
     native.cc_binary(
         name = xpu_binary_name,
         srcs = srcs,
@@ -184,8 +219,8 @@ def itex_xetla_binary(name, set_target = None, srcs = [], deps = [], *argc, **kw
     )
 
 def itex_xpu_library(name, srcs = [], hdrs = [], deps = [], *argc, **kwargs):
-    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + cpu_copts() + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_backend(["-DINTEL_GPU_ONLY"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + cpu_copts() + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_cc_build(["-DCC_BUILD"]) + if_cc_threadpool_build(["-DCC_THREADPOOL_BUILD"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
     native.cc_library(
         name = name,
         srcs = srcs,
@@ -201,8 +236,8 @@ def itex_xpu_binary(name, set_target = None, srcs = [], deps = [], *argc, **kwar
         actual_binary = ":%s" % xpu_binary_name,
         set_target = set_target,
     )
-    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_gpu_backend(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
-    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_backend(["-DINTEL_GPU_ONLY"]) + if_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["copts"] = kwargs.get("copts", []) + if_sycl(["-sycl_compile"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY -DEIGEN_USE_GPU=1"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
+    kwargs["linkopts"] = kwargs.get("linkopts", []) + if_sycl(["-link_stage"]) + if_gpu_or_root_sycl_build(["-DINTEL_GPU_ONLY"]) + if_gpu_or_root_sycl_using_nextpluggable_device(["-DUSING_NEXTPLUGGABLE_DEVICE"])
     native.cc_binary(
         name = xpu_binary_name,
         srcs = srcs,
@@ -258,7 +293,14 @@ def if_using_nextpluggable_device(if_true, if_false = []):
     Returns `if_true` if nextgluggable device is used.
     """
     return select({
+        "@itex_local_config_sycl//sycl:using_nextpluggable": if_true,
+        "//conditions:default": if_false,
+    })
+
+def if_gpu_or_root_sycl_using_nextpluggable_device(if_true, if_false = []):
+    """Select GPU runtime next-pluggable deps without polluting CPU transitions."""
+    return select({
         "@intel_extension_for_tensorflow//itex:gpu_with_nextpluggable_device_build": if_true,
-        "@intel_extension_for_tensorflow//itex:cpu_build": [],
+        "@intel_extension_for_tensorflow//itex:root_sycl_with_nextpluggable_device_build": if_true,
         "//conditions:default": if_false,
     })

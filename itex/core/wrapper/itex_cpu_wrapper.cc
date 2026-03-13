@@ -17,11 +17,13 @@ limitations under the License.
 
 #include <cpuid.h>
 #include <dlfcn.h>
+#include <cstdlib>
+#include <link.h>
+#include <string>
 
 #include "itex/core/devices/device_backend_util.h"
 #include "itex/core/utils/cpu_info.h"
-#include "itex/core/utils/env_var.h"
-#include "itex/core/utils/types.h"
+#include "itex/core/utils/logging.h"
 #include "tensorflow/c/experimental/grappler/grappler.h"
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/tf_status.h"
@@ -30,13 +32,75 @@ static void* handle;
 static void* LoadCpuLibrary() __attribute__((constructor));
 static void UnloadCpuLibrary() __attribute__((destructor));
 
+namespace {
+
+std::string CurrentWrapperPath() {
+  Dl_info info;
+  if (dladdr(reinterpret_cast<void*>(&LoadCpuLibrary), &info) != 0 &&
+      info.dli_fname != nullptr) {
+    return info.dli_fname;
+  }
+  return "unknown";
+}
+
+std::string LoadedLibraryPath(void* library_handle) {
+  if (library_handle == nullptr) return "unknown";
+  link_map* map = nullptr;
+  if (dlinfo(library_handle, RTLD_DI_LINKMAP, &map) == 0 && map != nullptr &&
+      map->l_name != nullptr && map->l_name[0] != '\0') {
+    return map->l_name;
+  }
+  return "unknown";
+}
+
+bool ParseEnvBool(const char* value, bool default_value, const char* name) {
+  if (value == nullptr) return default_value;
+  std::string normalized(value);
+  if (normalized == "1" || normalized == "true" || normalized == "True") {
+    return true;
+  }
+  if (normalized == "0" || normalized == "false" || normalized == "False") {
+    return false;
+  }
+  ITEX_LOG(WARNING) << name << " parse failed for value: " << normalized;
+  return default_value;
+}
+
+bool DebugWiringEnabled() {
+  static bool enabled =
+      ParseEnvBool(std::getenv("ITEX_DEBUG_WIRING"), false, "ITEX_DEBUG_WIRING");
+  return enabled;
+}
+
+void LogCpuWrapperWiring(const std::string& event,
+                         const std::string& extra = "") {
+  if (!DebugWiringEnabled()) return;
+  ITEX_LOG(INFO) << "ITEX_DEBUG_WIRING component=cpu_wrapper event=" << event
+                 << " wrapper_path=" << CurrentWrapperPath()
+                 << " backend=CPU compiled={USING_NEXTPLUGGABLE_DEVICE="
+#ifdef USING_NEXTPLUGGABLE_DEVICE
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", INTEL_GPU_ONLY="
+#ifdef INTEL_GPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << "} " << extra;
+}
+
+}  // namespace
+
 void* LoadCpuLibrary() {
   if (itex_get_backend() == ITEX_BACKEND_DEFAULT) {
     itex_freeze_backend(ITEX_BACKEND_CPU);
   }
-  bool requested_omp = false;
-  ITEX_CHECK_OK(
-      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", false, &requested_omp));
+  LogCpuWrapperWiring("load_start");
+  bool requested_omp =
+      ParseEnvBool(std::getenv("ITEX_OMP_THREADPOOL"), false, "ITEX_OMP_THREADPOOL");
   if (requested_omp) {
     ITEX_LOG(WARNING)
         << "ITEX_OMP_THREADPOOL=1 is deprecated and ignored. "
@@ -47,6 +111,9 @@ void* LoadCpuLibrary() {
   if (!onednn_handle) {
     ITEX_LOG(FATAL) << dlerror();
   }
+  LogCpuWrapperWiring("onednn_loaded",
+                      "library=libonednn_cpu_eigen_so.so library_path=" +
+                          LoadedLibraryPath(onednn_handle));
 
   if (itex::port::CPUIDAVX512()) {
     handle = dlopen("libitex_cpu_internal_avx512.so", RTLD_NOW | RTLD_LOCAL);
@@ -58,6 +125,9 @@ void* LoadCpuLibrary() {
     } else {
       ITEX_LOG(INFO)
           << "Intel Extension for Tensorflow* AVX512 CPU backend is loaded.";
+      LogCpuWrapperWiring("backend_loaded",
+                          "library=libitex_cpu_internal_avx512.so library_path=" +
+                              LoadedLibraryPath(handle));
       return handle;
     }
   }
@@ -68,6 +138,9 @@ void* LoadCpuLibrary() {
   }
   ITEX_LOG(INFO)
       << "Intel Extension for Tensorflow* AVX2 CPU backend is loaded.";
+  LogCpuWrapperWiring("backend_loaded",
+                      "library=libitex_cpu_internal_avx2.so library_path=" +
+                          LoadedLibraryPath(handle));
   return handle;
 }
 

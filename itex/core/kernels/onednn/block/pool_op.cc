@@ -120,14 +120,17 @@ class OneDnnPoolOp : public OneDnnPoolOpBase<T> {
           filter_dims, dilation_dims, padding_left, padding_right, attr);
 
       Tensor scratchpad_tensor;
-      int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size}),
-                                            &scratchpad_tensor));
-      auto scratchpad_mem =
-          dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
-                       GetTensorBuffer<T>(&scratchpad_tensor));
+      dnnl::memory scratchpad_mem;
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        int64 scratchpad_size = fwd_pd.scratchpad_desc().get_size() / sizeof(T);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size}),
+                                              &scratchpad_tensor));
+        scratchpad_mem =
+            dnnl::memory(fwd_pd.scratchpad_desc(), onednn_engine,
+                         GetTensorBuffer<T>(&scratchpad_tensor));
+      }
 
       auto fwd_primitive = pooling_forward(fwd_pd);
 
@@ -150,9 +153,10 @@ class OneDnnPoolOp : public OneDnnPoolOpBase<T> {
 
       // Execute primitive.
       std::unordered_map<int, memory> fwd_primitive_args = {
-          {DNNL_ARG_SRC, src_mem},
-          {DNNL_ARG_DST, dst_mem},
-          {DNNL_ARG_SCRATCHPAD, scratchpad_mem}};
+          {DNNL_ARG_SRC, src_mem}, {DNNL_ARG_DST, dst_mem}};
+      if (HasDnnlScratchpad(fwd_pd.scratchpad_desc())) {
+        fwd_primitive_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+      }
 
       if (alg != dnnl::algorithm::pooling_max &&
           alg != dnnl::algorithm::pooling_avg_exclude_padding) {
@@ -289,13 +293,16 @@ class OneDnnPoolGradOp : public OneDnnPoolOpBase<T> {
       Tensor scratchpad_tensor;
       int64 scratchpad_size =
           pooling_bwd_pd.scratchpad_desc().get_size() / sizeof(T);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<T>::v(),
-                                            TensorShape({scratchpad_size}),
-                                            &scratchpad_tensor));
-      auto scratchpad_mem =
-          dnnl::memory(pooling_bwd_pd.scratchpad_desc(), onednn_engine,
-                       GetTensorBuffer<T>(&scratchpad_tensor));
+      dnnl::memory scratchpad_mem;
+      if (HasDnnlScratchpad(pooling_bwd_pd.scratchpad_desc())) {
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<T>::v(),
+                                              TensorShape({scratchpad_size}),
+                                              &scratchpad_tensor));
+        scratchpad_mem =
+            dnnl::memory(pooling_bwd_pd.scratchpad_desc(), onednn_engine,
+                         GetTensorBuffer<T>(&scratchpad_tensor));
+      }
 
       auto bwd_primitive = pooling_backward(pooling_bwd_pd);
 
@@ -345,8 +352,10 @@ class OneDnnPoolGradOp : public OneDnnPoolOpBase<T> {
       std::unordered_map<int, memory> bwd_primitive_args = {
           {{DNNL_ARG_DIFF_DST,
             is_diff_dst_reordered ? diff_dst_reorder_mem : diff_dst_mem},
-           {DNNL_ARG_DIFF_SRC, diff_src_mem},
-           {DNNL_ARG_SCRATCHPAD, scratchpad_mem}}};
+           {DNNL_ARG_DIFF_SRC, diff_src_mem}}};
+      if (HasDnnlScratchpad(pooling_bwd_pd.scratchpad_desc())) {
+        bwd_primitive_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
+      }
       if (alg == dnnl::algorithm::pooling_max) {
         const Tensor& workspace_tensor = context->input(kWorkspaceIndex);
         dnnl::memory ws_mem =

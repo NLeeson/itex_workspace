@@ -768,8 +768,12 @@ class ConvOpBase : public OpKernel {
                    context->allocate_temp(DataTypeToEnum<Tinput>::v(),
                                           TensorShape({scratchpad_size_}),
                                           scratchpad_tensor_.get()));
-    scratchpad_mem_.set_data_handle(
-        GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+    if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+      scratchpad_mem_.set_data_handle(
+          GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+    } else {
+      scratchpad_mem_ = dnnl::memory();
+    }
 
     Tensor dst_tensor_opt;
     AllocateOutputTensor(context, fwd_pd_, dst_dims_onednn_, dst_tensor_shape_,
@@ -1009,14 +1013,19 @@ class ConvOpBase : public OpKernel {
 
       AllocateOutputTensor(context, fwd_pd_, dst_dims_onednn_,
                            dst_tensor_shape_, &dst_tensor_, &dst_tensor_opt);
-      scratchpad_size_ = fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
-      OP_REQUIRES_OK(context,
-                     context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                            TensorShape({scratchpad_size_}),
-                                            scratchpad_tensor_.get()));
-      scratchpad_mem_ =
-          dnnl::memory(fwd_pd_.scratchpad_desc(), onednn_engine_,
-                       GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+      scratchpad_size_ = 0;
+      if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+        scratchpad_size_ = fwd_pd_.scratchpad_desc().get_size() / sizeof(Tinput);
+        OP_REQUIRES_OK(context,
+                       context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                              TensorShape({scratchpad_size_}),
+                                              scratchpad_tensor_.get()));
+        scratchpad_mem_ =
+            dnnl::memory(fwd_pd_.scratchpad_desc(), onednn_engine_,
+                         GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
+      } else {
+        scratchpad_mem_ = dnnl::memory();
+      }
 
       fwd_primitive_ = convolution_forward(fwd_pd_);
 
@@ -1097,7 +1106,9 @@ class ConvOpBase : public OpKernel {
       fwd_primitives_args_.insert({DNNL_ARG_SRC, src_mem_opt_});
       fwd_primitives_args_.insert({DNNL_ARG_WEIGHTS, filter_mem_});
       fwd_primitives_args_.insert({DNNL_ARG_DST, dst_mem_opt_});
-      fwd_primitives_args_.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem_});
+      if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+        fwd_primitives_args_.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem_});
+      }
       if (post_op_util_.HasBN()) {
         post_op_util_.AddBNPrimArgs(&fwd_primitives_args_);
       }

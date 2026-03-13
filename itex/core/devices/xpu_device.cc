@@ -16,7 +16,12 @@ limitations under the License.
 #include "itex/core/devices/xpu_device.h"
 #endif
 
+#include <sstream>
+#include <string>
+
 #include "itex/core/devices/device_backend_util.h"
+#include "itex/core/utils/env_var.h"
+#include "itex/core/utils/logging.h"
 #include "itex/core/utils/types.h"
 #include "tensorflow/c/experimental/stream_executor/stream_executor.h"
 #ifndef INTEL_CPU_ONLY
@@ -24,6 +29,50 @@ limitations under the License.
 #endif  // INTEL_CPU_ONLY
 
 namespace itex {
+namespace {
+
+bool DebugWiringEnabled() {
+  static bool enabled = []() {
+    bool value = false;
+    auto status =
+        itex::ReadBoolFromEnvVar("ITEX_DEBUG_WIRING", false, &value);
+    if (!status.ok()) {
+      ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
+      return false;
+    }
+    return value;
+  }();
+  return enabled;
+}
+
+void LogDeviceWiring(const std::string& event, ITEX_BACKEND backend,
+                     const std::string& extra = "") {
+  if (!DebugWiringEnabled()) return;
+  ITEX_LOG(INFO) << "ITEX_DEBUG_WIRING component=xpu_device event=" << event
+                 << " backend=" << itex_backend_to_string(backend)
+                 << " compiled={INTEL_CPU_ONLY="
+#ifdef INTEL_CPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", INTEL_GPU_ONLY="
+#ifdef INTEL_GPU_ONLY
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << ", USING_NEXTPLUGGABLE_DEVICE="
+#ifdef USING_NEXTPLUGGABLE_DEVICE
+                 << "1"
+#else
+                 << "0"
+#endif
+                 << "} " << extra;
+}
+
+}  // namespace
+
 #define REPORT_UNIMPLMENTED(status)                            \
   {                                                            \
     std::ostringstream err;                                    \
@@ -36,11 +85,14 @@ void xpu_device_count(const SP_Platform* platform, int* device_count,
 #ifdef USING_NEXTPLUGGABLE_DEVICE
   ITEXNpdConfig& npdConfig = ITEXNpdConfig::getNpdConfig();
   if (npdConfig.IfEnableNextPluggableDevice()) {
+    LogDeviceWiring("device_count_short_circuit", ITEX_BACKEND_GPU,
+                    "npd_enabled=1 device_count=0");
     *device_count = 0;
     return;
   }
 #endif
   ITEX_BACKEND backend = itex_get_backend();
+  LogDeviceWiring("device_count", backend);
   switch (backend) {
     case ITEX_BACKEND_GPU:
       itex::gpu_device_count(platform, device_count, status);
@@ -58,6 +110,7 @@ void xpu_create_device(const SP_Platform* platform,
                        SE_CreateDeviceParams* params, TF_Status* const status) {
   ITEX_BACKEND backend = itex_get_backend();
   itex_freeze_backend(backend);
+  LogDeviceWiring("create_device", backend);
   switch (backend) {
     case ITEX_BACKEND_GPU:
       itex::gpu_create_device(platform, params, status);
@@ -92,6 +145,7 @@ void xpu_create_device_fns(const SP_Platform* platform,
                            SE_CreateDeviceFnsParams* params,
                            TF_Status* status) {
   ITEX_BACKEND backend = itex_get_backend();
+  LogDeviceWiring("create_device_fns", backend);
   switch (backend) {
     case ITEX_BACKEND_GPU:
       itex::gpu_create_device_fns(platform, params, status);

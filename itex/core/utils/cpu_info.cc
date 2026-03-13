@@ -21,7 +21,6 @@ limitations under the License.
 #include "itex/core/utils/integral_types.h"
 #include "itex/core/utils/logging.h"
 #include "itex/core/utils/platform.h"
-#include "itex/core/utils/types.h"
 #if defined(PLATFORM_IS_X86)
 #include <mutex>  // NOLINT
 #endif

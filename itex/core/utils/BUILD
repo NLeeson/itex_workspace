@@ -1,4 +1,4 @@
-load("//itex:itex.bzl", "cc_library", "if_gpu_backend", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
+load("//itex:itex.bzl", "cc_library", "if_gpu_backend", "if_gpu_build", "if_gpu_or_root_sycl_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library")
 load(
     "//itex/core/utils:build_config.bzl",
     "tf_protobuf_deps",
@@ -98,7 +98,7 @@ cc_library(
         "@local_config_tf//:protos_all",
         "@local_config_tf//:tf_header_lib",
         "@nsync//:nsync_cpp",
-    ] + if_using_nextpluggable_device([
+    ] + if_gpu_or_root_sycl_using_nextpluggable_device([
         "//third_party/build_option/sycl:itex_gpu_header",
         ":libintel_extension_for_openxla",
     ]),
@@ -109,7 +109,7 @@ cc_library(
     deps = if_gpu_build([
         "//itex/core/devices/gpu:eigen_stream_device",
         "//itex/core/devices/gpu:gpu_device_impl",
-    ]) + if_using_nextpluggable_device(
+    ]) + if_gpu_or_root_sycl_using_nextpluggable_device(
         ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
     ),
 )

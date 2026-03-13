@@ -1,6 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
-load("//itex:itex.bzl", "cc_binary", "if_gpu_build", "if_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
+load("//itex:itex.bzl", "cc_binary", "if_gpu_build", "if_gpu_or_root_sycl_build", "if_gpu_or_root_sycl_using_nextpluggable_device", "itex_xpu_binary", "itex_xpu_library", "tf_copts")
 load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
 load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 load("@bazel_skylib//lib:selects.bzl", "selects")
@@ -58,6 +58,12 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+config_setting(
+    name = "root_build",
+    flag_values = {":itex_build_target": ""},
+    visibility = ["//visibility:public"],
+)
+
 selects.config_setting_group(
     name = "gpu_build",
     match_any = [
@@ -75,9 +81,33 @@ selects.config_setting_group(
 )
 
 selects.config_setting_group(
+    name = "root_sycl_build",
+    match_all = [
+        ":root_build",
+        "@itex_local_config_sycl//sycl:using_sycl",
+    ],
+)
+
+selects.config_setting_group(
     name = "gpu_with_nextpluggable_device_build",
     match_all = [
         "@intel_extension_for_tensorflow//itex:gpu_build",
+        "@itex_local_config_sycl//sycl:using_nextpluggable",
+    ],
+)
+
+selects.config_setting_group(
+    name = "xpu_with_nextpluggable_device_build",
+    match_all = [
+        "@intel_extension_for_tensorflow//itex:xpu_build",
+        "@itex_local_config_sycl//sycl:using_nextpluggable",
+    ],
+)
+
+selects.config_setting_group(
+    name = "root_sycl_with_nextpluggable_device_build",
+    match_all = [
+        ":root_sycl_build",
         "@itex_local_config_sycl//sycl:using_nextpluggable",
     ],
 )
@@ -130,7 +160,7 @@ itex_xpu_binary(
         "//itex/core:protos_all_cc",
         "//itex/core/kernels:libitex_common",
         "@local_config_tf//:_pywrap_tensorflow_internal",
-    ] + if_using_nextpluggable_device([
+    ] + if_gpu_or_root_sycl_using_nextpluggable_device([
         "//itex/core/utils:libintel_extension_for_openxla",
     ]),
 )
@@ -151,13 +181,14 @@ itex_xpu_binary(
     ) + [
         "//itex/core:protos_all_cc",
         "//itex/core/kernels:itex_common_cc",
-    ] + if_using_nextpluggable_device([
+    ] + if_gpu_or_root_sycl_using_nextpluggable_device([
         "//itex/core/utils:libintel_extension_for_openxla",
     ]),
 )
 
 cc_binary(
     name = "libitex_cpu.so",
+    inject_gpu_copts = False,
     srcs = [
         "//itex/core/wrapper:itex_cpu_wrapper",
     ],
@@ -176,6 +207,7 @@ cc_binary(
 
 cc_binary(
     name = "libitex_cpu_internal_avx512.so",
+    inject_gpu_copts = False,
     linkopts = [
         "-Wl,-rpath,$$ORIGIN/../intel_extension_for_tensorflow",
         "-DINTEL_CPU_ONLY",
@@ -193,6 +225,7 @@ cc_binary(
 
 cc_binary(
     name = "libitex_cpu_internal_avx2.so",
+    inject_gpu_copts = False,
     linkopts = [
         "-Wl,-rpath,$$ORIGIN/../intel_extension_for_tensorflow",
         "-DINTEL_CPU_ONLY",
@@ -210,6 +243,7 @@ cc_binary(
 
 cc_binary(
     name = "libitex_cpu_cc.so",
+    inject_gpu_copts = False,
     linkopts = [
         "-Wl,-rpath,$$ORIGIN/",
         "-DINTEL_CPU_ONLY",
@@ -250,11 +284,12 @@ itex_xpu_library(
         [
             "//itex/core/devices/gpu:eigen_stream_device",
         ],
-    ) + if_using_nextpluggable_device(
-        ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
+    ) + if_gpu_or_root_sycl_build(
         [
             "//itex/core/devices/gpu:gpu_device_impl",
         ],
+    ) + if_gpu_or_root_sycl_using_nextpluggable_device(
+        ["//itex/core/devices/next_pluggable_device:next_pluggable_device"],
     ),
     alwayslink = True,
 )

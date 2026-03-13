@@ -150,6 +150,7 @@ filegroup(
             "src/gpu/generic/sycl/ref*",
             "src/graph/**",
             "src/gpu/intel/jit/v2/conv/planner/*",
+            "third_party/gtest/**",
             "third_party/xbyak_aarch64/**",
         ],
     ) + [

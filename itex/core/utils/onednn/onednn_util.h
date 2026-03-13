@@ -20,6 +20,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <map>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -44,6 +45,7 @@ namespace itex {
 typedef dnnl_status_t (*dnnl_stream_create_internal)(dnnl_stream_t*,
                                                      dnnl_engine_t, void*);
 static dnnl_stream_create_internal make_stream;
+static std::once_flag make_stream_once;
 
 using GPUDevice = Eigen::GpuDevice;
 using CPUDevice = Eigen::ThreadPoolDevice;
@@ -245,12 +247,12 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   // CPU and python build
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
-  if (make_stream == nullptr) {
+  std::call_once(make_stream_once, [] {
     make_stream = reinterpret_cast<dnnl_stream_create_internal>(
         dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
     ITEX_CHECK(make_stream != nullptr)
         << "Failed to resolve oneDNN threadpool stream creation symbol.";
-  }
+  });
 
   if (num_thread == 1) return dnnl::stream(engine);
 
@@ -280,6 +282,10 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
 }
 
 #endif  // ITEX_BUILD_JAX
+inline bool HasDnnlScratchpad(const dnnl::memory::desc& scratchpad_md) {
+  return scratchpad_md.get_size() != 0;
+}
+
 inline dnnl::memory CreateDnnlMemory(const dnnl::memory::desc& md,
                                      const dnnl::engine& engine,
                                      void* data_handle = nullptr) {

@@ -203,6 +203,7 @@ cc_library(
         exclude = [
             "src/cpu/aarch64/**",
             "src/cpu/sycl/**",
+            "third_party/gtest/**",
             "third_party/xbyak_aarch64/**",
             "src/cpu/rv64/**",
             "src/graph/**",
@@ -313,7 +314,7 @@ cc_library(
         ],
     ),
     # TODO(itex): find better way to include xbyak.h within onednn
-    copts = _GRAPH_COPTS_CPU_LIST + ["-I external/third_party"],
+    copts = _GRAPH_COPTS_CPU_LIST + ["-I external/onednn_cpu_eigen/third_party"],
     includes = _GRAPH_INCLUDES_LIST,
     visibility = ["//visibility:public"],
     deps = _GRAPH_DEPS_LIST + if_graph_compiler([":onednn_graph_cpu_special_lib"]) + [":onednn_cpu_lib"],
