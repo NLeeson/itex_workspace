@@ -210,7 +210,7 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
       flags.append('-DINTEL_CPU_ONLY')
     flags = [f for f in flags if is_valid_flag(f, True, False)]
     # icx/icpx do not accept -mavx512pf; drop it for Intel LLVM hosts.
-    host_basename = os.path.basename(HOST_COMPILER_PATH)
+    host_basename = os.path.basename(SYCL_PATH)
     if host_basename in ("icx", "icpx", "dpcpp"):
       flags = [f for f in flags if f != "-mavx512pf"]
       # Ensure C sources are compiled as C when using icpx.
@@ -223,13 +223,13 @@ def call_compiler(argv, link = False, sycl = True, xetla = False, cpu_only = Fal
       if (i < len(flags) - 1)  and (f == '-isystem' or f == '-iquote'):
         while(flags[i+1].startswith('-')):
           flags.pop(i)
-    cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' ' + ' '.join(flags))
+    cmd = ('env ' + ' ' + SYCL_PATH + ' ' + ' '.join(flags))
     if '-Wl,-no-as-needed' in flags:
       # '-no-as-needed' option affects ELF DT_NEEDED tags for dynamic libraries mentioned on the command line AFTER the '-no-as-needed' option.
       # Add '-no-as-needed' option at the beginning of command line, to make sure all the dynamic library mentioned on the command line to be added a DT_NEEDED tag by linker
-      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -Wl,-no-as-needed -mfma -O3 -xHost ' + ' '.join(flags))
+      cmd = ('env ' + ' ' + SYCL_PATH + ' -Wl,-no-as-needed -mfma -O3 -xHost ' + ' '.join(flags))
     else:
-      cmd = ('env ' + ' ' + HOST_COMPILER_PATH + ' -mfma -O3 -xHost ' + ' '.join(flags))
+      cmd = ('env ' + ' ' + SYCL_PATH + ' -mfma -O3 -xHost ' + ' '.join(flags))
 
   return system(cmd)
 

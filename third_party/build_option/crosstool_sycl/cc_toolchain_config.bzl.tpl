@@ -673,16 +673,16 @@ def _impl(ctx):
         tool_paths = [
             tool_path(name = "gcc", path = ctx.attr.compiler_driver),
             tool_path(name = "g++", path = ctx.attr.compiler_driver),
-            tool_path(name = "ar", path = ctx.attr.host_compiler_prefix + "/compiler/llvm-ar"),
+            tool_path(name = "ar", path = ctx.attr.sycl_compiler_root + "/bin/compiler/llvm-ar"),
             tool_path(name = "compat-ld", path = ctx.attr.compiler_driver),
             tool_path(name = "cpp", path = ctx.attr.compiler_driver),
-            tool_path(name = "dwp", path = ctx.attr.host_compiler_prefix + "/compiler/llvm-dwp"),
-            tool_path(name = "gcov", path = ctx.attr.host_compiler_prefix + "/gcov"),
+            tool_path(name = "dwp", path = ctx.attr.sycl_compiler_root + "/bin/compiler/llvm-dwp"),
+            tool_path(name = "gcov", path = ctx.attr.linker_bin_path + "/gcov"),
             tool_path(name = "ld", path = ctx.attr.compiler_driver),
-            tool_path(name = "nm", path = ctx.attr.host_compiler_prefix + "/compiler/llvm-nm"),
-            tool_path(name = "objcopy", path = ctx.attr.host_compiler_prefix + "/compiler/llvm-objcopy"),
-            tool_path(name = "objdump", path = ctx.attr.host_compiler_prefix + "/objdump"),
-            tool_path(name = "strip", path = ctx.attr.host_compiler_prefix + "/strip"),
+            tool_path(name = "nm", path = ctx.attr.sycl_compiler_root + "/bin/compiler/llvm-nm"),
+            tool_path(name = "objcopy", path = ctx.attr.sycl_compiler_root + "/bin/compiler/llvm-objcopy"),
+            tool_path(name = "objdump", path = ctx.attr.linker_bin_path + "/objdump"),
+            tool_path(name = "strip", path = ctx.attr.linker_bin_path + "/strip"),
         ]
     out = ctx.actions.declare_file(ctx.label.name)
     ctx.actions.write(out, "Fake executable")

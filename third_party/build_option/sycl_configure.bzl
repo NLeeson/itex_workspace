@@ -106,6 +106,15 @@ def find_sycl_root(repository_ctx):
         return sycl_name
     fail("Cannot find SYCL compiler, please correct your path")
 
+def find_sycl_host_compiler(repository_ctx):
+    """Find the Intel LLVM host compiler used by the SYCL toolchain."""
+    base_path = find_sycl_root(repository_ctx)
+    for compiler_name in ["icpx", "dpcpp", "icx", "clang"]:
+        compiler_path = repository_ctx.path(base_path + "/" + "bin" + "/" + compiler_name)
+        if compiler_path.exists:
+            return str(compiler_path)
+    fail("Cannot find SYCL host compiler, please correct your path")
+
 def find_gcc_install_dir(repository_ctx):
     _, gcc_path, _ = find_gcc(repository_ctx)
     gcc_install_dir = repository_ctx.execute([gcc_path, "-print-libgcc-file-name"])
@@ -417,7 +426,7 @@ def _sycl_autoconf_imp(repository_ctx):
         sycl_defines["%{extra_no_canonical_prefixes_flags}"] = "\"-fno-canonical-system-headers\""
         sycl_defines["%{unfiltered_compile_flags}"] = ""
         sycl_defines["%{host_compiler}"] = gcc_name
-        sycl_defines["%{HOST_COMPILER_PATH}"] = str(gcc_path)
+        sycl_defines["%{HOST_COMPILER_PATH}"] = str(find_sycl_host_compiler(repository_ctx))
         sycl_defines["%{host_compiler_install_dir}"] = str(find_gcc_install_dir(repository_ctx))
         sycl_defines["%{host_compiler_prefix}"] = str(gcc_path_prefix)
         sycl_defines["%{sycl_compiler_root}"] = str(find_sycl_root(repository_ctx))
