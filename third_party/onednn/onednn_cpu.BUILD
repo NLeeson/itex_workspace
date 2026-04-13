@@ -121,7 +121,7 @@ template_rule(
         #"@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn_graph": _OMP_WITH_ONEDNN_GRAPH_LIST,
         # Hard switch to threadpool runtime for CPU oneDNN builds.
         # "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _TBB_WITH_ONEDNN_GRAPH_LIST,
     }),
 )
 
@@ -209,6 +209,8 @@ cc_library(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/ppc64/**",
+            "src/cpu/s390x/**",
             "src/cpu/sycl/**",
             "third_party/gtest/**",
             "third_party/xbyak_aarch64/**",

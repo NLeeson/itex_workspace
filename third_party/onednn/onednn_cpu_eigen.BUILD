@@ -115,7 +115,7 @@ template_rule(
     name = "dnnl_config_h",
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
-    substitutions = _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
+    substitutions = _TBB_WITH_ONEDNN_GRAPH_LIST,
 )
 
 # Create the file dnnl_version.h with DNNL version numbers.
@@ -202,6 +202,8 @@ cc_library(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/ppc64/**",
+            "src/cpu/s390x/**",
             "src/cpu/sycl/**",
             "third_party/gtest/**",
             "third_party/xbyak_aarch64/**",

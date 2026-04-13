@@ -24,8 +24,8 @@ config_setting(
 
 # TODO(itex): try better bazel usage in configuring strings with different options
 _CMAKE_COMMON_LIST = {
-    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_THREADPOOL",
-    "#cmakedefine DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_${DNNL_CPU_THREADING_RUNTIME}": "#define DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_THREADPOOL",
+    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_DPCPP",
+    "#cmakedefine DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_${DNNL_CPU_THREADING_RUNTIME}": "#define DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_TBB",
     "#cmakedefine DNNL_GPU_RUNTIME DNNL_RUNTIME_${DNNL_GPU_RUNTIME}": if_sycl_build_is_configured("#define DNNL_GPU_RUNTIME DNNL_RUNTIME_DPCPP", "#define DNNL_GPU_RUNTIME DNNL_RUNTIME_SYCL"),
     "#cmakedefine DNNL_GPU_VENDOR DNNL_VENDOR_${DNNL_GPU_VENDOR}": "#define DNNL_GPU_VENDOR DNNL_VENDOR_INTEL",
     "#cmakedefine DNNL_SYCL_DPCPP": if_sycl_build_is_configured("#define DNNL_SYCL_DPCPP", "/* #undef DNNL_SYCL_DPCPP */"),
@@ -143,7 +143,9 @@ filegroup(
         ],
         exclude = [
             "src/cpu/aarch64/**",
+            "src/cpu/ppc64/**",
             "src/cpu/rv64/**",
+            "src/cpu/s390x/**",
             "src/gpu/nvidia/*",
             "src/gpu/amd/*",
             "src/gpu/sycl/ref*",
@@ -185,9 +187,11 @@ cc_library(
         "src",
         "src/common",
         "src/cpu/gemm",
+        "src/gpu/intel/jit/config",
         "src/gpu/intel/jit/gemm/",
         "src/gpu/intel/jit/gemm/include/",
         "src/gpu/intel/jit/ngen/",
+        "src/gpu/intel/microkernels",
         "src/gpu/intel/ocl",
         "src/sycl",
         "third_party",
