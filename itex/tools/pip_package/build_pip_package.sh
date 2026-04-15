@@ -173,9 +173,10 @@ function prepare_src() {
   [ -f "${ITEX_TMPDIR}/intel_extension_for_tensorflow/libitex_gpu_internal.so" ] && mv ${ITEX_TMPDIR}/intel_extension_for_tensorflow/libitex_gpu_internal.so ${LIB_TMPDIR}/intel_extension_for_tensorflow/
   [ -f "bazel-bin/third_party/onednn/libonednn_cpu_so.so" ] && cp -LR bazel-bin/third_party/onednn/libonednn_cpu*.so ${LIB_TMPDIR}/intel_extension_for_tensorflow/
   [ -f "bazel-bin/third_party/onednn/libonednn_gpu_so.so" ] && cp -LR bazel-bin/third_party/onednn/libonednn_gpu_so.so ${LIB_TMPDIR}/intel_extension_for_tensorflow/
-  tbb_runtime=$(find ${RUNFILES} -name libtbb.so.12 | head -1)
+  tbb_runtime=$(find ${RUNFILES} \( -name libtbb.so -o -name 'libtbb.so.*' \) | head -1)
   if [ -f "${tbb_runtime}" ]; then
-    cp -L "${tbb_runtime}" ${LIB_TMPDIR}/intel_extension_for_tensorflow/libtbb.so.12
+    tbb_runtime_real=$(readlink -f "${tbb_runtime}")
+    cp -L "${tbb_runtime_real}" ${LIB_TMPDIR}/intel_extension_for_tensorflow/$(basename "${tbb_runtime_real}")
   fi
   cp ${RUNFILES}/../../../../core/kernels/libitex_common.so ${LIB_TMPDIR}/intel_extension_for_tensorflow/
   xetla_lib=$(find ${RUNFILES} -name libitex_gpu_xetla.so)
