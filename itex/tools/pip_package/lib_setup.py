@@ -161,6 +161,7 @@ setup(
         _ext_path: [
             'python/*.so',
             '*.so',
+            '*.so.*',
         ] + matches + env_check_tool,
         _plugin_path: [
             '*'
