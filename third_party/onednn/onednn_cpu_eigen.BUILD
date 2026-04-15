@@ -115,7 +115,11 @@ template_rule(
     name = "dnnl_config_h",
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
-    substitutions = _TBB_WITH_ONEDNN_GRAPH_LIST,
+    substitutions = select({
+        "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
+        "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _TBB_WITH_ONEDNN_GRAPH_LIST,
+    }),
 )
 
 # Create the file dnnl_version.h with DNNL version numbers.

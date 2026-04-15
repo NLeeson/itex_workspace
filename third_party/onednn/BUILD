@@ -73,6 +73,7 @@ cc_library(
 cc_binary(
     name = "onednn_cpu_so",
     linkopts = [
+        "-Wl,-rpath,$$ORIGIN",
         "-Wl,-rpath,$$ORIGIN/../_solib_$(TARGET_CPU)/_U@onednn_Ucpu_S_S_Conednn_Ulibs_Ulinux___Uexternal_Sllvm_Uopenmp",
         "-Wl,-rpath,$$ORIGIN/../_solib_local/_U@onednn_Ucpu_S_S_Conednn_Ulibs_Ulinux___Uexternal_Sllvm_Uopenmp",
     ],
@@ -89,6 +90,7 @@ cc_binary(
 cc_binary(
     name = "onednn_cpu_eigen_so",
     linkopts = [
+        "-Wl,-rpath,$$ORIGIN",
         "-Wl,-rpath,$$ORIGIN/../_solib_$(TARGET_CPU)/_U@onednn_Ucpu_S_S_Conednn_Ulibs_Ulinux___Uexternal_Sllvm_Uopenmp",
         "-Wl,-rpath,$$ORIGIN/../_solib_local/_U@onednn_Ucpu_S_S_Conednn_Ulibs_Ulinux___Uexternal_Sllvm_Uopenmp",
     ],

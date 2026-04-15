@@ -24,6 +24,14 @@ def omp_deps():
         "//conditions:default": [],
     })
 
+def tbb_deps():
+    """Returns the host oneAPI TBB runtime library for pip packaging."""
+
+    return select({
+        "@intel_extension_for_tensorflow//itex:cpu_build": ["@oneTBB//:tbb_prebuilt"],
+        "//conditions:default": [],
+    })
+
 def onednn_deps():
     """Shorthand for select() to pull in the correct set of oneDNN library deps.
 

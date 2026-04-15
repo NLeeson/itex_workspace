@@ -2,7 +2,7 @@ load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
 load("//third_party/build_option:sycl_configure.bzl", "sycl_configure")
 load("//third_party/systemlibs:syslibs_configure.bzl", "syslibs_configure")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("//third_party/llvm_project:setup.bzl", "llvm_setup")
 load("//third_party/llvm_project:setup_16.bzl", "llvm_setup_16")
 load(
@@ -91,11 +91,11 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         ],
     )
 
-    # OneDNN cpu backend with TBB runtime.
-    git_repository(
+    # OneDNN cpu backend with the host oneAPI TBB runtime.
+    native.new_local_repository(
         name = "oneTBB",
-        tag = "v2021.5.0",
-        remote = "https://github.com/oneapi-src/oneTBB/",
+        path = "/opt/intel/oneapi/tbb/2022.3",
+        build_file = clean_dep("//third_party/systemlibs:oneTBB.BUILD"),
     )
 
     tf_http_archive(
