@@ -429,9 +429,11 @@ itex_xpu_binary(
     name = "libintel_extension_for_openxla.so",
     linkshared = True,
     set_target = "gpu_orig_backend",
+    linkopts = ["-Wl,-rpath,$$ORIGIN"],
     visibility = ["//visibility:public"],
     deps = [
         "@intel_extension_for_openxla//xla/pjrt:tf_pjrt_helper",
+        "@oneTBB//:tbb",
         "@onednn_gpu",
     ] + select({
         "//third_party/onednn:build_with_onednn_graph": ["@onednn_gpu//:onednn_graph_gpu"],
