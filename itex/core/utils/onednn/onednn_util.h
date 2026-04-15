@@ -46,6 +46,7 @@ typedef dnnl_status_t (*dnnl_stream_create_internal)(dnnl_stream_t*,
                                                      dnnl_engine_t, void*);
 static dnnl_stream_create_internal make_stream;
 static std::once_flag make_stream_once;
+static bool has_threadpool_stream_interop = false;
 
 using GPUDevice = Eigen::GpuDevice;
 using CPUDevice = Eigen::ThreadPoolDevice;
@@ -250,11 +251,18 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   std::call_once(make_stream_once, [] {
     make_stream = reinterpret_cast<dnnl_stream_create_internal>(
         dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
-    ITEX_CHECK(make_stream != nullptr)
-        << "Failed to resolve oneDNN threadpool stream creation symbol.";
+    has_threadpool_stream_interop = make_stream != nullptr;
+    if (!has_threadpool_stream_interop) {
+      ITEX_LOG(INFO)
+          << "oneDNN CPU runtime does not export "
+             "dnnl_threadpool_interop_stream_create; using default CPU "
+             "stream path.";
+    }
   });
 
-  if (num_thread == 1) return dnnl::stream(engine);
+  if (num_thread == 1 || !has_threadpool_stream_interop) {
+    return dnnl::stream(engine);
+  }
 
   MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
   dnnl_stream_t c_stream;
