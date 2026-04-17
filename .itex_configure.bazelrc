@@ -1,3 +1,4 @@
+build --action_env PYTHON_INCLUDE_PATH="/usr/include/python3.11"
 build --action_env PYTHON_BIN_PATH="/home/user/workspace/py_itex_mod/bin/python"
 build --action_env PYTHON_LIB_PATH="/home/user/workspace/py_itex_mod/lib/python3.11/site-packages"
 build --python_path="/home/user/workspace/py_itex_mod/bin/python"

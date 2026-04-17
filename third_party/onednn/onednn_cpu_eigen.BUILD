@@ -125,7 +125,7 @@ template_rule(
     substitutions = select({
         "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
         "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _TBB_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
     }),
 )
 

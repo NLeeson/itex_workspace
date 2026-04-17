@@ -2,8 +2,8 @@ build --nocheck_visibility
 # This config option is used for CPU backend.
 build:cpu --define=build_with_onednn=true
 build:cpu --define=build_with_onednn_graph=true
-# build:cpu --define=build_with_threadpool=true
-build:cpu --define=build_with_tbb=true
+build:cpu --define=build_with_threadpool=true
+#build:cpu --define=build_with_tbb=true
 build:cpu --define=build_with_graph_compiler=false # set to false
 build:cpu -c opt
 build:cpu --copt=-DINTEL_CPU_ONLY
@@ -19,8 +19,8 @@ build:cpu --define=device=cpu
 build:gpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
 build:gpu --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
 build:gpu --define=build_with_onednn_graph=true
-# build:gpu --define=build_with_threadpool=true
-build:gpu --define=build_with_tbb=true
+build:gpu --define=build_with_threadpool=true
+#build:gpu --define=build_with_tbb=true
 build:gpu --define=device=gpu
 build:gpu --define=tensorflow_mkldnn_contraction_kernel=0
 build:gpu --repo_env TF_NEED_SYCL=1
@@ -35,8 +35,8 @@ build:xpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
 build:xpu --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
 build:xpu --define=build_with_onednn=true
 build:xpu --define=build_with_onednn_graph=true
-# build:xpu --define=build_with_threadpool=true
-build:xpu --define=build_with_tbb=true
+build:xpu --define=build_with_threadpool=true
+#build:xpu --define=build_with_tbb=true
 build:xpu --define=device=gpu
 build:xpu --define=tensorflow_mkldnn_contraction_kernel=0
 build:xpu --repo_env TF_NEED_SYCL=1
