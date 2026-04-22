@@ -25,9 +25,12 @@ class Kernel(object):
     return [format_extern(entry) for entry in self.kernels_]
 
   def content(self, inc_dirs):
+    return self.extern_, '\n'.join(self._extend_includes(inc_dirs, self.path_))
+
+  def output_name(self):
     path = os.path.basename(self.path_)
-    kernel_name, _ = os.path.splitext(path)
-    return kernel_name, '\n'.join(self._extend_includes(inc_dirs, self.path_))
+    output_name, _ = os.path.splitext(path)
+    return output_name
 
   def subfolder(self, sub):
     kernel_dir = os.path.dirname(self.path_)
@@ -39,9 +42,13 @@ class Kernel(object):
       return kernel_dir[index:]
 
   def _parse_extern(self, path):
-    path = os.path.basename(path)
     file_name, _ = os.path.splitext(path)
-    return file_name
+    src_index = file_name.rfind(os.path.join("src", "gpu", "intel"))
+    if src_index == -1:
+      return os.path.basename(file_name)
+    rel_path = file_name[src_index + len(os.path.join("src", "gpu", "intel")) :]
+    rel_path = rel_path.strip(os.sep)
+    return rel_path.replace(os.sep, "_")
 
   def _parse_kernels(self, path, extern_name):
     with open(path) as f:
@@ -96,18 +103,18 @@ class Header(Kernel):
     return [format_entry(self.extern_)]
 
   def entries(self):
-    dir_path = os.path.dirname(self.path_)
-    src_index = dir_path.rfind("src")
-    header_path = self.path_[src_index + len("src") : ]
-    print(header_path)
-    print(self.extern_)
+    header_path = self._header_path()
     return '        {{ "{}", {}_header }},'.format(header_path, self.extern_)
 
   def name(self):
-    dir_path = os.path.dirname(self.path_)
-    src_index = dir_path.rfind("src")
-    header_path = self.path_[src_index + len("src") : ]
+    header_path = self._header_path()
     return '        "{}",'.format(header_path)
+
+  def _header_path(self):
+    src_index = self.path_.rfind(os.path.join("src", "gpu", "intel"))
+    if src_index == -1:
+      return os.path.basename(self.path_)
+    return self.path_[src_index + len("src") + 1 :]
 
 class KernelList(object):
   def __init__(self, folder, header_dir):
@@ -167,7 +174,7 @@ class KernelList(object):
     impl_name, content = impl.content(inc_dirs)
     more_sub = impl.subfolder(sub)
     # construct the file xxx_suffix.cpp
-    file_name = impl_name + "_" + suffix + ".cpp"
+    file_name = impl.output_name() + "_" + suffix + ".cpp"
 
     target = os.path.join(root, sub, more_sub)
 
@@ -260,13 +267,13 @@ class FilesHelper(object):
     """
         This class is a helper class which will matain the input and output files/dirs.
 
-        There's an assumption, the ocl impls folder is "src/gpu/intel/ocl". And also assuming
+        There's an assumption, the gpu intel impls folder is "src/gpu/intel". And also assuming
         the include directory is same depth with "src".
 
         If possible, it should passed as an arguments, but for covenience, we do this
         assumption directly.
         """
-    OCL_IMPL_DIR = "src/gpu/intel/ocl"
+    GPU_INTEL_IMPL_DIR = "src/gpu/intel"
     HEADER_ROOT_DIR = "src/gpu/intel"
     IN_FILE = "ocl_kernel_list.cpp.in"
 
@@ -274,16 +281,16 @@ class FilesHelper(object):
     out_dir = os.path.expanduser(out_dir)
 
     in_dir = os.path.dirname(in_file)
-    in_dir = in_dir[:-len(OCL_IMPL_DIR)]
+    in_dir = in_dir[:-len(GPU_INTEL_IMPL_DIR)]
 
     self.inc_dirs = [os.path.join(in_dir, "src"), os.path.join(in_dir, "include")]
-    self.ocl_impls_dir = os.path.join(in_dir, OCL_IMPL_DIR)
-    self.gen_kernel_list_cpp_in = os.path.join(in_dir, OCL_IMPL_DIR, IN_FILE)
+    self.ocl_impls_dir = os.path.join(in_dir, GPU_INTEL_IMPL_DIR)
+    self.gen_kernel_list_cpp_in = os.path.join(in_dir, GPU_INTEL_IMPL_DIR, IN_FILE)
 
     self.out_root = out_dir
-    self.out_subfolder = OCL_IMPL_DIR
+    self.out_subfolder = GPU_INTEL_IMPL_DIR
 
-    self.gen_kernel_list_cpp = os.path.join(out_dir, OCL_IMPL_DIR,
+    self.gen_kernel_list_cpp = os.path.join(out_dir, GPU_INTEL_IMPL_DIR,
                                             os.path.splitext(IN_FILE)[0])
 
     kernels_out = os.path.join(self.out_root, self.out_subfolder)

@@ -28,6 +28,7 @@ limitations under the License.
 
 #include "dnnl.hpp"             // NOLINT(build/include_subdir)
 #include "dnnl_threadpool.hpp"  // NOLINT(build/include_subdir)
+#include "itex/core/utils/blocking_counter.h"
 #include "itex/core/utils/cpu_info.h"
 #include "itex/core/utils/op_kernel.h"
 #include "itex/core/utils/threadpool.h"
@@ -86,12 +87,18 @@ struct MklDnnThreadPool : public threadpool_iface {
   }
   uint64_t get_flags() const override { return ASYNCHRONOUS; }
   void parallel_for(int n, const std::function<void(int, int)>& fn) override {
+    wait();
+
     // Should never happen (handled by DNNL)
-    if (n == 0) return;
+    if (n == 0) {
+      pending_jobs_.reset();
+      return;
+    }
 
     // Should never happen (handled by DNNL)
     if (n == 1) {
       fn(0, 1);
+      pending_jobs_.reset();
       return;
     }
 
@@ -107,19 +114,30 @@ struct MklDnnThreadPool : public threadpool_iface {
                                      // TF_ONEDNN_THREADPOOL_USE_CALLER_THREAD
                                      // default is false
     const int njobs_to_schedule = use_caller_thread ? njobs - 1 : njobs;
+    pending_jobs_ = std::make_shared<BlockingCounter>(njobs_to_schedule);
     for (int i = 0; i < njobs_to_schedule; i++) {
       eigen_interface_->ScheduleWithHint(
-          [balance, i, n, njobs, fn]() { run_jobs(balance, i, n, njobs, fn); },
+          [balance, i, n, njobs, fn, pending_jobs = pending_jobs_]() {
+            run_jobs(balance, i, n, njobs, fn);
+            pending_jobs->DecrementCount();
+          },
           i, i + 1);
     }
     if (use_caller_thread) {
       run_jobs(balance, njobs - 1, n, njobs, fn);
     }
   }
-  ~MklDnnThreadPool() {}
+  void wait() override {
+    if (pending_jobs_) {
+      pending_jobs_->Wait();
+      pending_jobs_.reset();
+    }
+  }
+  ~MklDnnThreadPool() override { wait(); }
 
  private:
   Eigen::ThreadPoolInterface* eigen_interface_ = nullptr;
+  std::shared_ptr<BlockingCounter> pending_jobs_;
   int num_threads_ = 1;  // Execute in caller thread.
 };
 

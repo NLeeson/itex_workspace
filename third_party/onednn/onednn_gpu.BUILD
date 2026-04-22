@@ -35,16 +35,18 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine DNNL_SYCL_HIP": "/* #undef DNNL_SYCL_HIP */",
     "#cmakedefine DNNL_SYCL_GENERIC": "/* #undef DNNL_SYCL_GENERIC */",
     "#cmakedefine DNNL_WITH_SYCL": if_sycl_build_is_configured("#define DNNL_WITH_SYCL", "/* #undef DNNL_WITH_SYCL */"),
-    "#cmakedefine DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE": "#define DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE",
+    "#cmakedefine DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE": "/* #undef DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE */",
     "#cmakedefine DNNL_ENABLE_STACK_CHECKER": "#undef DNNL_ENABLE_STACK_CHECKER",
 
-    "#cmakedefine DNNL_EXPERIMENTAL": "#undef DNNL_EXPERIMENTAL",
+    "#cmakedefine DNNL_EXPERIMENTAL\n": "/* #undef DNNL_EXPERIMENTAL */\n",
     "#cmakedefine DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER": "#undef DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER",
     "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
     "#cmakedefine DNNL_EXPERIMENTAL_UKERNEL": "#undef DNNL_EXPERIMENTAL_UKERNEL",
     "#cmakedefine DNNL_EXPERIMENTAL_SPARSE": "#undef DNNL_EXPERIMENTAL_SPARSE",
+    "#cmakedefine DNNL_ENABLE_CONCURRENT_EXEC": "#define DNNL_ENABLE_CONCURRENT_EXEC",
 
+    "#cmakedefine DNNL_SAFE_RBP": "/* #undef DNNL_SAFE_RBP */",
     "#cmakedefine DNNL_DISABLE_GPU_REF_KERNELS": "#undef DNNL_DISABLE_GPU_REF_KERNELS",
     "#cmakedefine01 BUILD_TRAINING": "#define BUILD_TRAINING 1",
     "#cmakedefine01 BUILD_INFERENCE": "#define BUILD_INFERENCE 0",
@@ -113,13 +115,13 @@ template_rule(
 
 convert_cl_to_cpp(
     name = "kernel_list_generator",
-    src = "src/gpu/intel/ocl/ocl_kernel_list.cpp.in",
-    cl_list = glob(["src/gpu/intel/ocl/**/*.cl"]),
+    src = "src/gpu/intel/ocl_kernel_list.cpp.in",
+    cl_list = glob(["src/gpu/intel/**/*.cl"]),
 )
 
 convert_header_to_cpp(
     name = "header_generator",
-    src = "src/gpu/intel/ocl/ocl_kernel_list.cpp.in",
+    src = "src/gpu/intel/ocl_kernel_list.cpp.in",
     header_list = glob(["src/gpu/intel/**/*.h"]),
 )
 
@@ -195,9 +197,14 @@ cc_library(
         "src/common",
         "src/cpu/gemm",
         "src/gpu/intel/jit/config",
-        "src/gpu/intel/jit/gemm/",
-        "src/gpu/intel/jit/gemm/include/",
-        "src/gpu/intel/jit/ngen/",
+        # oneDNN v3.11.x moved Gemmstone from src/gpu/intel/jit/gemm
+        # to src/gpu/intel/gemm/jit.
+        #"src/gpu/intel/jit/gemm/",
+        #"src/gpu/intel/jit/gemm/include/",
+        #"src/gpu/intel/jit/ngen/",
+        "src/gpu/intel/gemm/jit/",
+        "src/gpu/intel/gemm/jit/include/",
+        "src/gpu/intel/gemm/jit/include/gemmstone/",
         "src/gpu/intel/microkernels",
         "src/gpu/intel/ocl",
         "src/sycl",
@@ -235,6 +242,7 @@ _GRAPH_SRCS_LIST = glob(
         "src/graph/backend/*.cpp",
         "src/graph/backend/dnnl/*.cpp",
         "src/graph/backend/fake/*.cpp",
+        "src/graph/backend/dnnl/executables/*.cpp",
         "src/graph/backend/dnnl/passes/*.cpp",
         "src/graph/backend/dnnl/patterns/*.cpp",
         "src/graph/backend/dnnl/kernels/*.cpp",
@@ -250,6 +258,7 @@ _GRAPH_HDRS_LIST = glob(
         "src/graph/backend/*.hpp",
         "src/graph/backend/dnnl/*.hpp",
         "src/graph/backend/fake/*.hpp",
+        "src/graph/backend/dnnl/executables/*.hpp",
         "src/graph/backend/dnnl/passes/*.hpp",
         "src/graph/backend/dnnl/patterns/*.hpp",
         "src/graph/backend/dnnl/kernels/*.hpp",
