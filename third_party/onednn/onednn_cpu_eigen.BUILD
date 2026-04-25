@@ -1,11 +1,8 @@
 exports_files(["LICENSE"])
 
 load(
-    "@intel_extension_for_tensorflow//third_party:common.bzl",
-    "template_rule",
-)
-load(
     "@intel_extension_for_tensorflow//third_party/onednn:onednn.bzl",
+    "gen_onednn_config",
     "gen_onednn_version",
 )
 load("@intel_extension_for_tensorflow//itex:itex.bzl", "if_cc_build")
@@ -20,7 +17,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine DNNL_SYCL_GENERIC": "#undef DNNL_SYCL_GENERIC",
     "#cmakedefine DNNL_ENABLE_STACK_CHECKER": "#undef DNNL_ENABLE_STACK_CHECKER",
 
-    "#cmakedefine DNNL_EXPERIMENTAL\n": "#undef DNNL_EXPERIMENTAL\n",
+    "#cmakedefine DNNL_EXPERIMENTAL": "#undef DNNL_EXPERIMENTAL",
     "#cmakedefine DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER": "#undef DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER",
     "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
@@ -120,7 +117,7 @@ _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
 # tbb + no llga build is not supported here, to simplify the logic here.
 # TODO(itex): try better bazel usage in configuring strings with different options
-template_rule(
+gen_onednn_config(
     name = "dnnl_config_h",
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",

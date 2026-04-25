@@ -175,6 +175,7 @@ class OneDnnPoolOp : public OneDnnPoolOpBase<T> {
         fwd_primitive_args.insert({DNNL_ARG_WORKSPACE, ws_mem});
       }
       fwd_primitive.execute(onednn_stream, fwd_primitive_args);
+      onednn_stream.wait();
 
       bool int8_forward_inference =
           std::is_same<T, qint8>::value || std::is_same<T, quint8>::value;
@@ -364,6 +365,7 @@ class OneDnnPoolGradOp : public OneDnnPoolOpBase<T> {
         bwd_primitive_args.insert({DNNL_ARG_WORKSPACE, ws_mem});
       }
       bwd_primitive.execute(onednn_stream, bwd_primitive_args);
+      onednn_stream.wait();
     } catch (dnnl::error& e) {
       string error_msg = "Status:" + std::to_string(e.status) +
                          ", message: " + string(e.message) + ". in file " +

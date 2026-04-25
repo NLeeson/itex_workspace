@@ -26,7 +26,7 @@ limitations under the License.
 #include "itex/core/utils/register_types.h"
 #include "itex/core/utils/types.h"
 #include "mkl.h"  // NOLINT(build/include_subdir)
-#include "oneapi/mkl/dfti.hpp"
+#include "oneapi/mkl/dft.hpp"
 #include "oneapi/mkl/exceptions.hpp"
 
 namespace itex {
@@ -193,15 +193,15 @@ class FFTGPUBase : public FFTBase {
       oneapi::mkl::dft::descriptor<P, D> desc(dims_vec);
 
       desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
-                     DFTI_NOT_INPLACE);
+                     oneapi::mkl::dft::config_value::NOT_INPLACE);
       desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
                      batch_size);
 
       if (IsReal()) {
         std::vector<int64_t> mkl_istrides(1 + fft_rank, 0);
         std::vector<int64_t> mkl_ostrides(1 + fft_rank, 0);
-        desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
-                       DFTI_COMPLEX_COMPLEX);
+        desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
+                       oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
 
         int64_t tmp_istride = 1, tmp_ostride = 1;
         for (int64_t i = fft_rank; i > 0; --i) {
@@ -216,16 +216,20 @@ class FFTGPUBase : public FFTBase {
           tmp_istride *= input_embed[i - 1];
           tmp_ostride *= output_embed[i - 1];
         }
-        desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
-                       mkl_istrides.data());
-        desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
-                       mkl_ostrides.data());
         if (IsForward()) {
+          desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
+                         mkl_istrides);
+          desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
+                         mkl_ostrides);
           desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
                          tmp_istride);
           desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
                          tmp_ostride);
         } else {
+          desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
+                         mkl_ostrides);
+          desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
+                         mkl_istrides);
           desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
                          tmp_ostride);
           desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,

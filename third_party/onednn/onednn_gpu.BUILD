@@ -1,16 +1,16 @@
 load("@intel_extension_for_tensorflow//itex:itex.bzl", "cc_library")
 load(
-    "@intel_extension_for_tensorflow//third_party:common.bzl",
-    "template_rule",
-)
-load("@intel_extension_for_tensorflow//third_party/onednn:build_defs.bzl", "if_graph_compiler", "if_llga_debug")
-load(
     "@intel_extension_for_tensorflow//third_party/onednn:onednn.bzl",
     "convert_cl_to_cpp",
     "convert_header_to_cpp",
+    "gen_onednn_config",
     "gen_onednn_version",
 )
-load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl_build_is_configured")
+load("@intel_extension_for_tensorflow//third_party/onednn:build_defs.bzl", "if_graph_compiler", "if_llga_debug")
+load(
+    "@itex_local_config_sycl//sycl:build_defs.bzl",
+    "if_sycl_build_is_configured",
+)
 
 exports_files(["LICENSE"])
 
@@ -38,7 +38,7 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE": "/* #undef DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE */",
     "#cmakedefine DNNL_ENABLE_STACK_CHECKER": "#undef DNNL_ENABLE_STACK_CHECKER",
 
-    "#cmakedefine DNNL_EXPERIMENTAL\n": "/* #undef DNNL_EXPERIMENTAL */\n",
+    "#cmakedefine DNNL_EXPERIMENTAL": "#define DNNL_EXPERIMENTAL",
     "#cmakedefine DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER": "#undef DNNL_EXPERIMENTAL_SYCL_KERNEL_COMPILER",
     "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
@@ -103,7 +103,7 @@ _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST = {
 }
 _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST.update(_CMAKE_COMMON_LIST)
 
-template_rule(
+gen_onednn_config(
     name = "dnnl_config_h",
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
@@ -186,6 +186,7 @@ cc_library(
     copts = [
         "-fexceptions",
         "-DDNNL_ENABLE_PRIMITIVE_CACHE",
+        "-DGEMMSTONE_BUILD_12LP",
         #TODO(itex): for symbol collision, may be removed in produce version
         "-fvisibility=hidden",
     ],

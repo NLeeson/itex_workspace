@@ -318,6 +318,7 @@ class BatchMatMulOp : public OpKernel {
     // Skip primitive execution if the calculation is meaningless.
     if (!is_input_zero_) {
       matmul_primitive_.execute(onednn_stream_, fwd_primitive_args_);
+      onednn_stream_.wait();
     }
 
     scratchpad_tensor_.reset();

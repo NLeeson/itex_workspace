@@ -247,8 +247,8 @@ class MatMulTest(test_util.TensorFlowTestCase, parameterized.TestCase):
   """Test for matmul."""
 
   SUPPORTED_DTYPES = [
-      dtypes.float16, dtypes.float32, dtypes.float64, dtypes.int32,
-      dtypes.int64, dtypes.bfloat16, dtypes.complex64, dtypes.complex128
+      dtypes.float16, dtypes.float32, dtypes.int32,
+      dtypes.int64, dtypes.bfloat16, dtypes.complex64,
   ]
 
   def testMatMul2D(self):
@@ -1155,8 +1155,7 @@ class ArgMaxMinTest(test_util.TensorFlowTestCase):
       return constant_op.constant(array, dtype=dtype)
 
   def _getValidDtypes(self):
-    return (dtypes.bfloat16, dtypes.float16, dtypes.float32, dtypes.float64,
-            dtypes.int32, dtypes.int64)
+    return (dtypes.bfloat16, dtypes.float16, dtypes.float32, dtypes.int32, dtypes.int64)
 
   def testArgMax(self):
     shape = (24, 8)

@@ -38,6 +38,10 @@ new_git_repository(
     name = "intel_extension_for_openxla",
     build_file = clean_dep("//third_party/intel_extension_for_openxla:intel_extension_for_openxla.BUILD"),
     commit = XLA_COMMIT,
+    patch_args = ["-p1"],
+    patches = [
+        clean_dep("//third_party/intel_extension_for_openxla:onemkl_dft_header.patch"),
+    ],
     remote = "https://github.com/intel/intel-extension-for-openxla.git",
     verbose = True,
 )

@@ -25,7 +25,7 @@ class Kernel(object):
     return [format_extern(entry) for entry in self.kernels_]
 
   def content(self, inc_dirs):
-    return self.extern_, '\n'.join(self._extend_includes(inc_dirs, self.path_))
+    return self.extern_, '\n'.join(self._stringify_file(self.path_))
 
   def output_name(self):
     path = os.path.basename(self.path_)
@@ -57,33 +57,21 @@ class Kernel(object):
       kernels = re.findall(pattern, content, re.DOTALL)
       return kernels
 
-  def _extend_includes(self, inc_dirs, path):
+  def _stringify_file(self, path):
     ret = []
-    pattern = re.compile('^\\s*#include "(.*)"')
     with open(path) as f:
       lines = f.readlines()
       for line in lines:
-        result = pattern.match(line)
-        if result is not None:
-          inc_file = result.group(1)
-          for inc_dir in inc_dirs:
-            inc_path = os.path.join(inc_dir, inc_file)
-            if not os.path.exists(inc_path):
-              continue
-            inc_lines = self._extend_includes(inc_dirs, inc_path)
-            ret.extend(inc_lines)
-            break
+        if is_v2:
+          line = line.strip()
+          line = line.replace("\n", "")
+          quoted_line = 'R"==({})==""\\n"'.format(line)
         else:
-          if is_v2:
-            line = line.strip()
-            line = line.replace("\n", "")
-            quoted_line = 'R"==({})==""\\n"'.format(line)
-          else:
-            line = line.replace('\\', '\\\\')
-            line = line.replace('"', '\\"')
-            line = line.replace("\n", "\\n")
-            quoted_line = '"{}",'.format(line)
-          ret.append(quoted_line)
+          line = line.replace('\\', '\\\\')
+          line = line.replace('"', '\\"')
+          line = line.replace("\n", "\\n")
+          quoted_line = '"{}",'.format(line)
+        ret.append(quoted_line)
 
     return ret
 
@@ -214,10 +202,8 @@ namespace dnnl {{
 namespace impl {{
 namespace gpu {{
 namespace intel {{
-namespace ocl {{
     const char* {}_{} =
 {};
-}}
 }}
 }}
 }}

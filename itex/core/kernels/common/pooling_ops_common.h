@@ -652,6 +652,7 @@ class PoolingOp : public PoolingForwardOpBase<T> {
         net_args.insert({DNNL_ARG_WORKSPACE, ws_mem});
       }
       fwd.execute(onednn_stream, net_args);
+      onednn_stream.wait();
 
       bool int8_forward_inference =
           std::is_same<T, qint8>::value || std::is_same<T, quint8>::value;

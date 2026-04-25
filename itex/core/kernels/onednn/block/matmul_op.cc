@@ -466,6 +466,7 @@ class OneDnnMatMulOp : public OneDnnMatMulBaseOp<Device, T> {
     }
 
     fwd_primitive_.execute(onednn_stream_, fwd_primitive_args_);
+    onednn_stream_.wait();
     scratchpad_tensor_.reset();
   }
 

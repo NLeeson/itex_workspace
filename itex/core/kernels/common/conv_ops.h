@@ -803,6 +803,7 @@ class ConvOpBase : public OpKernel {
 
     if (!is_format_reordered_) {
       fwd_primitive_.execute(onednn_stream_, fwd_primitives_args_);
+      onednn_stream_.wait();
     }
     scratchpad_tensor_.reset();
   }
@@ -1129,6 +1130,7 @@ class ConvOpBase : public OpKernel {
       if (is_format_reordered_) {
         fwd_primitive_.execute(onednn_stream_, fwd_primitives_args_);
         dst_reorder.execute(onednn_stream_, dst_reorder_args);
+        onednn_stream_.wait();
       }
 
       is_init_ = true;

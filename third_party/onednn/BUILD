@@ -136,6 +136,16 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "gen_onednn_config",
+    srcs = ["gen_onednn_config.py"],
+    visibility = [
+        "@onednn_cpu//:__subpackages__",
+        "@onednn_cpu_eigen//:__subpackages__",
+        "@onednn_gpu//:__subpackages__",
+    ],
+)
+
 config_setting(
     name = "build_with_llga_debug",
     define_values = {

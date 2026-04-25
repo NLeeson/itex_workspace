@@ -11,8 +11,8 @@ build --action_env TF_NEED_ROCM=0 --repo_env TF_NEED_ROCM=0
 build --action_env=CC --action_env=CXX --action_env=LD --action_env=HOST_C_COMPILER --action_env=HOST_CXX_COMPILER  --action_env=CMAKE_C_COMPILER --action_env=CMAKE_CXX_COMPILER
 build   --repo_env=CC   --repo_env=CXX   --repo_env=LD   --repo_env=HOST_C_COMPILER   --repo_env=HOST_CXX_COMPILER  --repo_env=CMAKE_C_COMPILER --repo_env=CMAKE_CXX_COMPILER
 
-build --action_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
-build --repo_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2025.3/bin/icpx
+build --action_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2026.0/bin/icpx
+build --repo_env=GCC_HOST_COMPILER=/opt/intel/oneapi/compiler/2026.0/bin/icpx
 
 # compiler flags
 build --action_env=CFLAGS --action_env=CXXFLAGS --action_env=LDFLAGS --action_env=LDFLAGS

@@ -655,6 +655,7 @@ class MatMulOp : public OpKernel {
     }
 
     matmul_primitive_.execute(dnnl_stream_, fwd_primitive_args_);
+    dnnl_stream_.wait();
     scratchpad_tensor_.reset();
   }
 
@@ -1048,6 +1049,7 @@ class MatMulFunctor {
     }
 
     matmul_primitive_.execute(dnnl_stream_, fwd_primitive_args_);
+    dnnl_stream_.wait();
 
     scratchpad_tensor_.reset();
   }
@@ -1318,6 +1320,7 @@ class FusedMatMulGradOp : public OpKernel {
     scratchpad_tensor_ = std::make_shared<Tensor>();
     InitOrSetMemory(context);
     matmul_bwd_primitive_.execute(onednn_stream_, fwd_primitive_args_);
+    onednn_stream_.wait();
 
     scratchpad_tensor_.reset();
     // Reorder diff weight to plain format if it's reordered.

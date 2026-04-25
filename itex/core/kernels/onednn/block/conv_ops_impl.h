@@ -226,6 +226,7 @@ class OneDnnConvOp : public OpKernel {
           DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, scales_mem);
     }
     fwd_primitive_.execute(onednn_stream_, fwd_primitives_args_);
+    onednn_stream_.wait();
     src_data_output_.reset();
     scratchpad_tensor_.reset();
   }
@@ -1834,6 +1835,7 @@ class OneDnnQuantizeV2WithQuantizedConv2DOp
 
     this->fwd_primitive_.execute(this->onednn_stream_,
                                  this->fwd_primitives_args_);
+    this->onednn_stream_.wait();
 
     this->scratchpad_tensor_.reset();
     float min_input = min_range[0];

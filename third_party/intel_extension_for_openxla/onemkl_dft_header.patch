@@ -1,0 +1,256 @@
+diff --git a/third_party/openxla.patch b/third_party/openxla.patch
+--- a/third_party/openxla.patch
++++ b/third_party/openxla.patch
+@@ -2116,7 +2116,7 @@ index d17a570ef4..5602df2b38 100644
+ +#if TENSORFLOW_USE_SYCL
+ +#include "oneapi/mkl/blas.hpp"
+ +#include "oneapi/mkl/lapack.hpp"
+-+#include "oneapi/mkl/dfti.hpp"
+++#include "oneapi/mkl/dft.hpp"
+ +#include "oneapi/mkl/exceptions.hpp"
+ +#else // TENSORFLOW_USE_SYCL
+  #if !TENSORFLOW_USE_ROCM
+diff --git a/xla/stream_executor/sycl/sycl_blas.h b/xla/stream_executor/sycl/sycl_blas.h
+--- a/xla/stream_executor/sycl/sycl_blas.h
++++ b/xla/stream_executor/sycl/sycl_blas.h
+@@ -29,7 +29,7 @@
+
+ #include "absl/base/thread_annotations.h"
+ #include "absl/synchronization/mutex.h"
+ #include "oneapi/mkl/blas.hpp"
+-#include "oneapi/mkl/dfti.hpp"
++#include "oneapi/mkl/dft.hpp"
+ #include "oneapi/mkl/exceptions.hpp"
+ #include "oneapi/mkl/lapack.hpp"
+ #include "xla/stream_executor/blas.h"
+diff --git a/xla/stream_executor/sycl/sycl_fft.h b/xla/stream_executor/sycl/sycl_fft.h
+--- a/xla/stream_executor/sycl/sycl_fft.h
++++ b/xla/stream_executor/sycl/sycl_fft.h
+@@ -27,7 +27,7 @@
+ #endif
+
+ #include "oneapi/mkl/blas.hpp"
+-#include "oneapi/mkl/dfti.hpp"
++#include "oneapi/mkl/dft.hpp"
+ #include "oneapi/mkl/exceptions.hpp"
+ #include "oneapi/mkl/lapack.hpp"
+ #include "xla/stream_executor/fft.h"
+diff --git a/xla/stream_executor/sycl/sycl_fft.cc b/xla/stream_executor/sycl/sycl_fft.cc
+--- a/xla/stream_executor/sycl/sycl_fft.cc
++++ b/xla/stream_executor/sycl/sycl_fft.cc
+@@ -188,23 +188,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::COMPLEX>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+@@ -246,23 +251,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::COMPLEX>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+@@ -304,23 +314,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::REAL>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+@@ -362,23 +377,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::REAL>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+@@ -420,23 +440,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::REAL>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+@@ -478,23 +503,28 @@ bool SYCLFft::DoFft(Stream *stream, fft::Plan *plan,
+                                oneapi::mkl::dft::domain::REAL>
+       desc(plan_->get_dims_vec());
+
+-  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT, DFTI_NOT_INPLACE);
++  desc.set_value(oneapi::mkl::dft::config_param::PLACEMENT,
++                 oneapi::mkl::dft::config_value::NOT_INPLACE);
+   desc.set_value(oneapi::mkl::dft::config_param::NUMBER_OF_TRANSFORMS,
+                  plan_->get_batch_count());
+
+   if (plan_->get_is_real()) {
+-    desc.set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+-                   DFTI_COMPLEX_COMPLEX);
+-    desc.set_value(oneapi::mkl::dft::config_param::INPUT_STRIDES,
+-                   (plan_->get_mkl_istrides()).data());
+-    desc.set_value(oneapi::mkl::dft::config_param::OUTPUT_STRIDES,
+-                   (plan_->get_mkl_ostrides()).data());
++    desc.set_value(oneapi::mkl::dft::config_param::COMPLEX_STORAGE,
++                   oneapi::mkl::dft::config_value::COMPLEX_COMPLEX);
+     if (plan_->get_is_forward()) {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_istrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_ostrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_istride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+     } else {
++      desc.set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,
++                     plan_->get_mkl_ostrides());
++      desc.set_value(oneapi::mkl::dft::config_param::BWD_STRIDES,
++                     plan_->get_mkl_istrides());
+       desc.set_value(oneapi::mkl::dft::config_param::FWD_DISTANCE,
+                      plan_->get_tmp_ostride());
+       desc.set_value(oneapi::mkl::dft::config_param::BWD_DISTANCE,

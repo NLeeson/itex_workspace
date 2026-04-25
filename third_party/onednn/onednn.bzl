@@ -50,3 +50,45 @@ def gen_onednn_version(name, header_in, header_out, **kwargs):
         cmd = "$(location {}) ".format(tool) + "--in=$< " + "--out=$@",
         **kwargs
     )
+
+def _gen_onednn_config_impl(ctx):
+    args = ctx.actions.args()
+    args.add("--src=%s" % ctx.file.src.path)
+    args.add("--out=%s" % ctx.outputs.out.path)
+    for key, value in sorted(ctx.attr.substitutions.items()):
+        args.add("--substitution")
+        args.add(key)
+        args.add(value)
+
+    ctx.actions.run(
+        inputs = [ctx.file.src],
+        outputs = [ctx.outputs.out],
+        executable = ctx.executable._tool,
+        arguments = [args],
+    )
+
+_gen_onednn_config = rule(
+    implementation = _gen_onednn_config_impl,
+    attrs = {
+        "src": attr.label(
+            mandatory = True,
+            allow_single_file = True,
+        ),
+        "substitutions": attr.string_dict(mandatory = True),
+        "out": attr.output(mandatory = True),
+        "_tool": attr.label(
+            default = Label("@intel_extension_for_tensorflow//third_party/onednn:gen_onednn_config"),
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+)
+
+def gen_onednn_config(name, src, out, substitutions, **kwargs):
+    _gen_onednn_config(
+        name = name,
+        src = src,
+        out = out,
+        substitutions = substitutions,
+        **kwargs
+    )
