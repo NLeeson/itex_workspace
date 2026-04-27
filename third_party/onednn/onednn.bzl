@@ -59,6 +59,9 @@ def _gen_onednn_config_impl(ctx):
         args.add("--substitution")
         args.add(key)
         args.add(value)
+    for define in ctx.attr.defines:
+        args.add("--define")
+        args.add(define)
 
     ctx.actions.run(
         inputs = [ctx.file.src],
@@ -75,6 +78,7 @@ _gen_onednn_config = rule(
             allow_single_file = True,
         ),
         "substitutions": attr.string_dict(mandatory = True),
+        "defines": attr.string_list(default = []),
         "out": attr.output(mandatory = True),
         "_tool": attr.label(
             default = Label("@intel_extension_for_tensorflow//third_party/onednn:gen_onednn_config"),
@@ -84,11 +88,12 @@ _gen_onednn_config = rule(
     },
 )
 
-def gen_onednn_config(name, src, out, substitutions, **kwargs):
+def gen_onednn_config(name, src, out, substitutions, defines = [], **kwargs):
     _gen_onednn_config(
         name = name,
         src = src,
         out = out,
         substitutions = substitutions,
+        defines = defines,
         **kwargs
     )

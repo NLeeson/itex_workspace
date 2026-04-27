@@ -3,10 +3,16 @@ import sys
 
 
 def parse_args(argv):
-  args = {"--substitution": []}
+  args = {"--define": [], "--substitution": []}
   i = 0
   while i < len(argv):
     arg = argv[i]
+    if arg == "--define":
+      if i + 1 >= len(argv):
+        raise ValueError("missing macro name for --define")
+      args["--define"].append(argv[i + 1])
+      i += 2
+      continue
     if arg == "--substitution":
       if i + 2 >= len(argv):
         raise ValueError("missing key/value for --substitution")
@@ -22,6 +28,10 @@ def parse_args(argv):
   return args
 
 
+def define_block(macro):
+  return "\n#ifndef {macro}\n#define {macro}\n#endif\n".format(macro=macro)
+
+
 def rewrite_line(line, substitutions):
   stripped = line.rstrip("\n")
   replacement = substitutions.get(stripped)
@@ -32,11 +42,14 @@ def rewrite_line(line, substitutions):
   return replacement
 
 
-def generate_config(src, out, substitutions):
+def generate_config(src, out, substitutions, defines):
   with open(os.path.expanduser(src), "r", encoding="utf-8") as inf:
     lines = inf.readlines()
 
   content = "".join(rewrite_line(line, substitutions) for line in lines)
+  if defines:
+    content += "\n/* ITEX-enforced oneDNN build defines. */\n"
+    content += "".join(define_block(macro) for macro in sorted(defines))
 
   out = os.path.expanduser(out)
   out_dir = os.path.dirname(out)
@@ -53,6 +66,7 @@ def main():
       args["--src"],
       args["--out"],
       dict(args["--substitution"]),
+      args["--define"],
   )
 
 

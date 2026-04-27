@@ -119,6 +119,7 @@ _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 # TODO(itex): try better bazel usage in configuring strings with different options
 gen_onednn_config(
     name = "dnnl_config_h",
+    defines = ["DNNL_ENABLE_CONCURRENT_EXEC"],
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
     substitutions = select({

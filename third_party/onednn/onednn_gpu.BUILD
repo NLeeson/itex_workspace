@@ -105,6 +105,7 @@ _CMAKE_WITHOUT_ONEDNN_GRAPH_LIST.update(_CMAKE_COMMON_LIST)
 
 gen_onednn_config(
     name = "dnnl_config_h",
+    defines = ["DNNL_ENABLE_CONCURRENT_EXEC"],
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
     substitutions = select({
