@@ -2,10 +2,16 @@ exports_files(["LICENSE"])
 
 load(
     "@intel_extension_for_tensorflow//third_party/onednn:onednn.bzl",
+    "convert_cl_to_cpp",
+    "convert_header_to_cpp",
     "gen_onednn_config",
     "gen_onednn_version",
 )
 load("@intel_extension_for_tensorflow//itex:itex.bzl", "if_cc_build")
+load(
+    "@itex_local_config_sycl//sycl:build_defs.bzl",
+    "if_sycl_build_is_configured",
+)
 
 _DNNL_CPU_COMMON = {
     "#cmakedefine DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE": "#undef DNNL_USE_RT_OBJECTS_IN_PRIMITIVE_CACHE",
@@ -80,8 +86,10 @@ _DNNL_RUNTIME_TBB = {
 
 _DNNL_RUNTIME_THREADPOOL = {
     "#cmakedefine DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_${DNNL_CPU_THREADING_RUNTIME}": "#define DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_THREADPOOL",
-    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_THREADPOOL",
-    "#cmakedefine DNNL_GPU_RUNTIME DNNL_RUNTIME_${DNNL_GPU_RUNTIME}": "#define DNNL_GPU_RUNTIME DNNL_RUNTIME_NONE",
+    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": if_sycl_build_is_configured("#define DNNL_CPU_RUNTIME DNNL_RUNTIME_DPCPP", "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_SYCL"),
+    "#cmakedefine DNNL_GPU_RUNTIME DNNL_RUNTIME_${DNNL_GPU_RUNTIME}": if_sycl_build_is_configured("#define DNNL_GPU_RUNTIME DNNL_RUNTIME_DPCPP", "#define DNNL_GPU_RUNTIME DNNL_RUNTIME_SYCL"),
+    "#cmakedefine DNNL_GPU_VENDOR DNNL_VENDOR_${DNNL_GPU_VENDOR}": "#define DNNL_GPU_VENDOR DNNL_VENDOR_INTEL",
+    "#cmakedefine DNNL_WITH_SYCL": "#define DNNL_WITH_SYCL",
 }
 
 _DNNL_RUNTIME_OMP = {
@@ -132,6 +140,18 @@ gen_onednn_config(
     }),
 )
 
+convert_cl_to_cpp(
+    name = "kernel_list_generator",
+    src = "src/gpu/intel/ocl_kernel_list.cpp.in",
+    cl_list = glob(["src/gpu/intel/**/*.cl"]),
+)
+
+convert_header_to_cpp(
+    name = "header_generator",
+    src = "src/gpu/intel/ocl_kernel_list.cpp.in",
+    header_list = glob(["src/gpu/intel/**/*.h"]),
+)
+
 # Create the file dnnl_version.h with DNNL version numbers.
 gen_onednn_version(
     name = "onednn_version_generator",
@@ -155,6 +175,7 @@ _COPTS_LIST = [
     "-UUSE_CBLAS",
     "-DDNNL_ENABLE_MAX_CPU_ISA",
     "-DDNNL_ENABLE_PRIMITIVE_CACHE",
+    "-DGEMMSTONE_BUILD_12LP",
 ] + if_cc_build(["-fvisibility=hidden"])
 
 _INCLUDES_LIST = [
@@ -162,11 +183,35 @@ _INCLUDES_LIST = [
     "src",
     "third_party",
     "src/common",
-    "src/cpu",
-    "src/cpu/gemm",
+    # Keep private CPU subtrees out of exported Bazel includes. src/cpu
+    # contains sycl/stream.hpp and must not shadow DPC++ <sycl/stream.hpp>.
+    #"src/cpu",
+    #"src/cpu/gemm",
     "third_party/ittnotify",
     "third_party/xbyak",
     "third_party/spdlog",
+]
+
+_PRIVATE_CPU_INCLUDE_COPTS_LIST = [
+    "-iquote",
+    "external/onednn_cpu/src/cpu",
+    "-iquote",
+    "external/onednn_cpu/src/cpu/gemm",
+]
+
+_PRIVATE_GPU_PROVIDER_INCLUDE_COPTS_LIST = [
+    "-iquote",
+    "external/onednn_cpu/src/gpu/intel/jit/config",
+    "-iquote",
+    "external/onednn_cpu/src/gpu/intel/gemm/jit",
+    "-iquote",
+    "external/onednn_cpu/src/gpu/intel/gemm/jit/include",
+    "-iquote",
+    "external/onednn_cpu/src/gpu/intel/gemm/jit/include/gemmstone",
+    "-iquote",
+    "external/onednn_cpu/src/gpu/intel/microkernels",
+    "-iquote",
+    "external/onednn_cpu/third_party/ngen",
 ]
 
 _TEXTUAL_HDRS_LIST = glob(
@@ -179,6 +224,27 @@ _TEXTUAL_HDRS_LIST = glob(
     ":onednn_version_hash_generator",
 ]
 
+_GPU_PROVIDER_SRCS_LIST = glob(
+    [
+        "src/gpu/**/*.cpp",
+        "src/gpu/**/*.hpp",
+        "src/gpu/**/*.h",
+        "src/gpu/**/*.c",
+        "src/xpu/ocl/**/*.cpp",
+        "src/xpu/ocl/**/*.hpp",
+    ],
+    exclude = [
+        "src/gpu/nvidia/**",
+        "src/gpu/amd/**",
+        "src/gpu/sycl/ref*",
+        "src/gpu/generic/sycl/ref*",
+        "src/gpu/intel/jit/v2/conv/planner/**",
+    ],
+) + [
+    ":header_generator",
+    ":kernel_list_generator",
+]
+
 cc_library(
     name = "onednn_libs_linux",
     srcs = [
@@ -188,7 +254,16 @@ cc_library(
     visibility = ["//visibility:public"],
 )
 
-# headers for onednn
+cc_library(
+    name = "onednn_cpu_headers",
+    copts = _COPTS_LIST,
+    includes = ["include"],
+    linkopts = ["-lrt"],
+    textual_hdrs = _TEXTUAL_HDRS_LIST,
+    visibility = ["//visibility:public"],
+)
+
+# headers and implementation for onednn
 cc_library(
     name = "onednn_cpu",
     copts = _COPTS_LIST,
@@ -197,6 +272,7 @@ cc_library(
     textual_hdrs = _TEXTUAL_HDRS_LIST,
     visibility = ["//visibility:public"],
     deps = if_cc_build([
+        ":onednn_cpu_headers",
         ":onednn_cpu_lib",
         ":onednn_libs_linux",
     ]),
@@ -211,6 +287,10 @@ cc_library(
             "src/cpu/**/*.cpp",
             "src/cpu/jit_utils/**/*.cpp",
             "src/cpu/x64/**/*.cpp",
+            "src/xpu/*.cpp",
+            "src/xpu/*.hpp",
+            "src/xpu/sycl/**/*.cpp",
+            "src/xpu/sycl/**/*.hpp",
             "third_party/**/*.c",
             "third_party/**/*.cpp",
         ],
@@ -218,18 +298,18 @@ cc_library(
             "src/cpu/aarch64/**",
             "src/cpu/ppc64/**",
             "src/cpu/s390x/**",
-            "src/cpu/sycl/**",
             "third_party/gtest/**",
             "third_party/xbyak_aarch64/**",
             "src/cpu/rv64/**",
             "src/graph/**",
         ],
-    ),
-    copts = _COPTS_LIST,
+    ) + _GPU_PROVIDER_SRCS_LIST,
+    copts = _COPTS_LIST + _PRIVATE_CPU_INCLUDE_COPTS_LIST + _PRIVATE_GPU_PROVIDER_INCLUDE_COPTS_LIST,
     includes = _INCLUDES_LIST,
     linkopts = ["-lrt"],
     textual_hdrs = _TEXTUAL_HDRS_LIST,
     visibility = ["//visibility:public"],
+    deps = ["@itex_local_config_sycl//sycl:itex_gpu_headers"],
     alwayslink = True,
 )
 
@@ -298,7 +378,7 @@ _GRAPH_INCLUDES_LIST = [
 ])
 
 _GRAPH_DEPS_LIST = [
-    ":onednn_cpu",
+    ":onednn_cpu_headers",
 ] + if_graph_compiler(
     [
         "@llvm-project-16//llvm:Core",

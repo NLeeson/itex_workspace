@@ -1,6 +1,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("//itex:itex.bzl", "itex_xpu_binary")
+load("@itex_local_config_sycl//sycl:build_defs.bzl", "if_sycl")
 
 exports_files(["LICENSE"])
 
@@ -56,6 +57,10 @@ bzl_library(
     srcs = ["build_defs.bzl"],
 )
 
+_ONEDNN_CPU_SYCL_RUNTIME_DEPS = if_sycl([
+    "@itex_local_config_sycl//sycl:sycl_runtime",
+])
+
 cc_library(
     name = "intel_binary_blob",
     visibility = ["//visibility:public"],
@@ -84,7 +89,7 @@ cc_binary(
     ] + select({
         "//third_party/onednn:build_with_onednn_graph": ["@onednn_cpu//:onednn_graph_cpu_lib"],
         "//conditions:default": ["@onednn_cpu//:onednn_cpu_lib"],
-    }),
+    }) + _ONEDNN_CPU_SYCL_RUNTIME_DEPS,
 )
 
 cc_binary(
@@ -101,7 +106,7 @@ cc_binary(
     ] + select({
         "//third_party/onednn:build_with_onednn_graph": ["@onednn_cpu_eigen//:onednn_graph_cpu_lib"],
         "//conditions:default": ["@onednn_cpu_eigen//:onednn_cpu_lib"],
-    }),
+    }) + _ONEDNN_CPU_SYCL_RUNTIME_DEPS,
 )
 
 itex_xpu_binary(

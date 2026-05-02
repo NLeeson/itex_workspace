@@ -461,6 +461,7 @@ def _sycl_autoconf_imp(repository_ctx):
         linker_flags = "" if additional_linker_flags == [] else "linker_flag: "
         linker_flags += "\n  linker_flag: ".join(additional_linker_flags)
 
+        _tpl(repository_ctx, "sycl:BUILD", sycl_defines)
         _tpl(repository_ctx, "crosstool_sycl:BUILD", sycl_defines)
         _tpl(repository_ctx, "crosstool_sycl/bin:crosstool_wrapper_driver", sycl_defines)
         _tpl(repository_ctx, "crosstool_sycl:cc_toolchain_config.bzl", sycl_defines)
