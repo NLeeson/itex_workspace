@@ -23,7 +23,7 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import math_ops
 
 tf.compat.v1.disable_eager_execution()
-def GetRandomNormalInput(shape, dtype=np.float64):
+def GetRandomNormalInput(shape, dtype=np.float32):
     scale = 0.1
     loc = 0.1
     vals = np.array(np.random.normal(loc, scale, np.prod(shape)), dtype=dtype)
@@ -90,6 +90,7 @@ class BatchMatMulTest(test_util.TensorFlowTestCase):
                 self._testNonEmpty(tf.bfloat16, adjoint_a_, adjoint_b_)
  
     def testFp64(self):
+        test_util.skip_if_fp64_unsupported(self, tf.double)
         for adjoint_a_ in False, True:
             for adjoint_b_ in False, True:
                 self._testNonEmpty(tf.double, adjoint_a_, adjoint_b_)

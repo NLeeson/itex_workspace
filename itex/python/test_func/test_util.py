@@ -528,6 +528,56 @@ def skip_if(condition):
   return real_skip_if
 
 
+def is_fp64_supported():
+  """Returns whether tests may execute fp64/complex128 XPU kernels."""
+  return os.environ.get("ITEX_TEST_ENABLE_FP64", "").lower() in (
+      "1", "true", "yes", "on")
+
+
+def skip_if_fp64_unsupported(test_obj, value=None):
+  """Skips a test before unsupported fp64/complex128 graph execution."""
+  if is_fp64_supported():
+    return
+  if value is None:
+    test_obj.skipTest("fp64/complex128 is not supported on this platform")
+  dtype = getattr(value, "dtype", value)
+  try:
+    dtype = dtypes.as_dtype(dtype)
+  except TypeError:
+    return
+  if dtype in (dtypes.float64, dtypes.complex128):
+    test_obj.skipTest("fp64/complex128 is not supported on this platform")
+
+
+def _contains_fp64_tensor(fetches):
+  if is_fp64_supported():
+    return False
+  for value in nest.flatten(fetches):
+    dtype = getattr(value, "dtype", None)
+    if dtype is not None:
+      try:
+        if dtypes.as_dtype(dtype) in (dtypes.float64, dtypes.complex128):
+          return True
+      except TypeError:
+        pass
+    graph = getattr(value, "graph", None)
+    if graph is None:
+      continue
+    for op in graph.get_operations():
+      for output in op.outputs:
+        if output.dtype in (dtypes.float64, dtypes.complex128):
+          return True
+  return False
+
+
+def _is_explicit_fp64_test_name(test_name):
+  if is_fp64_supported():
+    return False
+  lowered = test_name.lower()
+  return any(token in lowered for token in (
+      "fp64", "float64", "double", "complex128"))
+
+
 @contextlib.contextmanager
 def skip_if_error(test_obj, error_type, messages=None):
   """Context manager to skip cases not considered failures by the tests.
@@ -2371,6 +2421,8 @@ class TensorFlowTestCase(googletest.TestCase):
     # Avoiding calling setUp() for the poorly named test_session method.
     if self.id().endswith(".test_session"):
       self.skipTest("Not a test.")
+    if _is_explicit_fp64_test_name(self.id()):
+      self.skipTest("fp64/complex128 is not supported on this platform")
 
     self._test_start_time = time.time()
 
@@ -2571,6 +2623,8 @@ class TensorFlowTestCase(googletest.TestCase):
     Returns:
       tensors numpy values.
     """
+    if _contains_fp64_tensor(tensors):
+      self.skipTest("fp64/complex128 is not supported on this platform")
     if context.executing_eagerly():
       return self._eval_helper(tensors)
     else:
