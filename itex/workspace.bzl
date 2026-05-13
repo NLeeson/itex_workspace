@@ -17,6 +17,107 @@ load(
 def clean_dep(dep):
     return str(Label(dep))
 
+
+def _one_tbb_repository_impl(repository_ctx):
+    tbb_path = repository_ctx.os.environ.get("ONEAPI_TBB_PATH")
+    if tbb_path:
+        root = repository_ctx.path(tbb_path)
+        if not root.exists:
+            fail("ONEAPI_TBB_PATH points to a missing directory: %s" % tbb_path)
+        repository_ctx.symlink(root, "tbb")
+        repository_ctx.file("BUILD", """
+package(default_visibility = ["//visibility:public"])
+
+cc_import(
+    name = "tbb_prebuilt",
+    shared_library = "tbb/lib/libtbb.so",
+)
+
+cc_library(
+    name = "tbb",
+    hdrs = glob([
+        "tbb/include/oneapi/**/*.h",
+        "tbb/include/tbb/**/*.h",
+    ]),
+    includes = ["tbb/include"],
+    deps = [":tbb_prebuilt"],
+)
+
+cc_import(
+    name = "tbbmalloc_prebuilt",
+    shared_library = "tbb/lib/libtbbmalloc.so",
+)
+
+cc_library(
+    name = "tbbmalloc",
+    hdrs = glob([
+        "tbb/include/oneapi/**/*.h",
+        "tbb/include/tbb/**/*.h",
+    ]),
+    includes = ["tbb/include"],
+    deps = [":tbbmalloc_prebuilt"],
+)
+
+cc_import(
+    name = "tbbmalloc_proxy_prebuilt",
+    shared_library = "tbb/lib/libtbbmalloc_proxy.so",
+)
+
+cc_library(
+    name = "tbbmalloc_proxy",
+    hdrs = glob([
+        "tbb/include/oneapi/**/*.h",
+        "tbb/include/tbb/**/*.h",
+    ]),
+    includes = ["tbb/include"],
+    deps = [
+        ":tbbmalloc_proxy_prebuilt",
+        ":tbbmalloc",
+    ],
+)
+""")
+    else:
+        repository_ctx.file("BUILD", """
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "tbb_prebuilt",
+    linkopts = ["-ltbb"],
+)
+
+cc_library(
+    name = "tbb",
+    linkopts = ["-ltbb"],
+)
+
+cc_library(
+    name = "tbbmalloc_prebuilt",
+    linkopts = ["-ltbbmalloc"],
+)
+
+cc_library(
+    name = "tbbmalloc",
+    linkopts = ["-ltbbmalloc"],
+)
+
+cc_library(
+    name = "tbbmalloc_proxy_prebuilt",
+    linkopts = ["-ltbbmalloc_proxy"],
+    deps = [":tbbmalloc"],
+)
+
+cc_library(
+    name = "tbbmalloc_proxy",
+    linkopts = ["-ltbbmalloc_proxy"],
+    deps = [":tbbmalloc"],
+)
+""")
+
+one_tbb_repository = repository_rule(
+    implementation = _one_tbb_repository_impl,
+    environ = ["ONEAPI_TBB_PATH"],
+)
+
 def _itex_bind():
     # Needed by Protobuf
     native.bind(
@@ -90,12 +191,10 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         ],
     )
 
-    # OneDNN cpu backend with the host oneAPI TBB runtime.
-    native.new_local_repository(
-        name = "oneTBB",
-        path = "/opt/intel/oneapi/tbb/2022.3",
-        build_file = clean_dep("//third_party/systemlibs:oneTBB.BUILD"),
-    )
+    # Optional oneAPI TBB runtime. Set ONEAPI_TBB_PATH to package a specific
+    # oneTBB installation; otherwise Bazel falls back to system linker flags for
+    # targets that explicitly enable TBB.
+    one_tbb_repository(name = "oneTBB")
 
     tf_http_archive(
         name = "com_googlesource_code_re2",

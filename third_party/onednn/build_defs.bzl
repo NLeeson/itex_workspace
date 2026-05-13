@@ -25,10 +25,10 @@ def omp_deps():
     })
 
 def tbb_deps():
-    """Returns the host oneAPI TBB runtime library for pip packaging."""
+    """Returns TBB runtime libraries for CPU pip packages that opt into TBB."""
 
     return select({
-        "@intel_extension_for_tensorflow//itex:cpu_build": ["@oneTBB//:tbb_prebuilt"],
+        "@intel_extension_for_tensorflow//third_party/onednn:cpu_build_with_tbb": ["@oneTBB//:tbb_prebuilt"],
         "//conditions:default": [],
     })
 

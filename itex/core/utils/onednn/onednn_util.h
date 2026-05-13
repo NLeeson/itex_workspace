@@ -16,8 +16,6 @@ limitations under the License.
 #ifndef ITEX_CORE_UTILS_ONEDNN_ONEDNN_UTIL_H_
 #define ITEX_CORE_UTILS_ONEDNN_ONEDNN_UTIL_H_
 
-#include <dlfcn.h>
-
 #include <algorithm>
 #include <map>
 #include <mutex>
@@ -42,12 +40,6 @@ limitations under the License.
 #include "itex/core/wrapper/itex_cpu_wrapper.h"
 
 namespace itex {
-typedef dnnl_status_t (*dnnl_stream_create_internal)(dnnl_stream_t*,
-                                                     dnnl_engine_t, void*);
-static dnnl_stream_create_internal make_stream;
-static std::once_flag make_stream_once;
-static bool has_threadpool_stream_interop = false;
-
 using GPUDevice = Eigen::GpuDevice;
 using CPUDevice = Eigen::ThreadPoolDevice;
 
@@ -245,30 +237,14 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
 #else
 #ifndef CC_BUILD
-  // CPU and python build
+  // CPU Python kernels do not uniformly wait before returning from Compute().
+  // Keep this path synchronous so oneDNN work cannot outlive local scratchpads
+  // or expose incomplete outputs to callers. The C++ threadpool build below
+  // keeps using oneDNN's threadpool interop where its callers are designed for
+  // that runtime.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
-  std::call_once(make_stream_once, [] {
-    make_stream = reinterpret_cast<dnnl_stream_create_internal>(
-        dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
-    has_threadpool_stream_interop = make_stream != nullptr;
-    if (!has_threadpool_stream_interop) {
-      ITEX_LOG(INFO)
-          << "oneDNN CPU runtime does not export "
-             "dnnl_threadpool_interop_stream_create; using default CPU "
-             "stream path.";
-    }
-  });
-
-  if (num_thread == 1 || !has_threadpool_stream_interop) {
-    return dnnl::stream(engine);
-  }
-
-  MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
-  dnnl_stream_t c_stream;
-  make_stream(&c_stream, engine.get(), eigen_tp);
-  dnnl::stream tp_stream = dnnl::stream(c_stream);
-  return tp_stream;
+  return dnnl::stream(engine);
 #else
 // CPU and C++ BUILD
 #ifdef CC_THREADPOOL_BUILD

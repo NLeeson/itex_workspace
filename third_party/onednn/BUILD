@@ -51,6 +51,15 @@ selects.config_setting_group(
     ],
 )
 
+selects.config_setting_group(
+    name = "cpu_build_with_tbb",
+    match_all = [
+        ":build_with_tbb",
+        "//itex:cpu_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 bzl_library(
     name = "build_defs_bzl",
     srcs = ["build_defs.bzl"],

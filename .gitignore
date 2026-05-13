@@ -21,3 +21,5 @@ GEMINI.md
 build_changelog
 WHL*/
 .codex
+.itex_configure.bazelrc
+.bazelrc.user
