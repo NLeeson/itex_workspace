@@ -55,6 +55,23 @@ def path_filter(path):
       return False
   return True
 
+
+def _existing_dirs(paths):
+  """Return the subset of paths that exist as directories."""
+  return [path for path in paths if path and os.path.isdir(path)]
+
+
+def _append_path_entries(base, entries):
+  """Append path entries to a colon-separated environment value."""
+  entries = [entry for entry in entries if entry]
+  if not entries:
+    return base
+  entries_str = ':'.join(entries)
+  if base:
+    return base + ':' + entries_str
+  return entries_str
+
+
 class UserInputError(Exception):
   pass
 
@@ -739,19 +756,20 @@ def set_sycl_toolkit_path(environ_cp):
 
   write_action_env_to_bazelrc('SYCL_TOOLKIT_PATH',
                               sycl_toolkit_path)
-  lib_path = '%s/lib:%s/compiler/lib/intel64_lin' %(
-      sycl_toolkit_path,
-      sycl_toolkit_path,
-  )
+  sycl_lib_paths = _existing_dirs([
+      os.path.join(sycl_toolkit_path, 'lib'),
+      os.path.join(sycl_toolkit_path, 'compiler', 'lib', 'intel64_lin'),
+  ])
+  lib_path = ':'.join(sycl_lib_paths)
 
   ld_lib_path = lib_path
   ld_library_path = os.getenv('LD_LIBRARY_PATH')
   if ld_library_path is not None and len(ld_library_path) > 0:
-    ld_lib_path += ':' + ld_library_path
+    ld_lib_path = _append_path_entries(ld_lib_path, [ld_library_path])
 
   library_path = os.getenv('LIBRARY_PATH')
   if library_path is not None and len(library_path) > 0:
-    lib_path += ':' + library_path
+    lib_path = _append_path_entries(lib_path, [library_path])
 
   mkl_path = os.getenv('ONEAPI_MKL_PATH')
   if mkl_path is None:
@@ -762,7 +780,11 @@ def set_sycl_toolkit_path(environ_cp):
     environ_cp['ONEAPI_MKL_PATH'] = mkl_path    
   set_mkl_path(environ_cp)
   mkl_path = environ_cp['ONEAPI_MKL_PATH']
-  lib_path += ':' + '%slib/intel64' % (mkl_path)
+  mkl_lib_paths = _existing_dirs([
+      os.path.join(mkl_path, 'lib', 'intel64'),
+      os.path.join(mkl_path, 'lib'),
+  ])
+  lib_path = _append_path_entries(lib_path, mkl_lib_paths)
   print('Configured oneMKL Toolkit path: %s\n' % (mkl_path))
     
   write_action_env_to_bazelrc('LD_LIBRARY_PATH',
