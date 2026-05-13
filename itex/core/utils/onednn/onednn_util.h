@@ -237,14 +237,14 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
 #else
 #ifndef CC_BUILD
-  // CPU Python kernels do not uniformly wait before returning from Compute().
-  // Keep this path synchronous so oneDNN work cannot outlive local scratchpads
-  // or expose incomplete outputs to callers. The C++ threadpool build below
-  // keeps using oneDNN's threadpool interop where its callers are designed for
-  // that runtime.
+  // The CPU Python wrapper loads the oneDNN CPU library built with the
+  // threadpool runtime, so create a threadpool interop stream for CPU kernels.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
-  return dnnl::stream(engine);
+  MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
+  dnnl::stream tp_stream =
+      dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
+  return tp_stream;
 #else
 // CPU and C++ BUILD
 #ifdef CC_THREADPOOL_BUILD

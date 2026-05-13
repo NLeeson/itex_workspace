@@ -317,6 +317,7 @@ class EltwiseGradBaseOp : public OpKernel {
         bwd_primitive_args.insert({DNNL_ARG_SCRATCHPAD, scratchpad_mem});
       }
       bwd_primitive.execute(onednn_stream, bwd_primitive_args);
+      onednn_stream.wait();
     } catch (dnnl::error& e) {
       string error_msg = "Status: " + std::to_string(e.status) +
                          ", message: " + string(e.message) + ", in file " +
