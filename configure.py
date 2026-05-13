@@ -597,7 +597,7 @@ def check_bazel_version(min_version):
   return curr_version
 
 
-def set_cc_opt_flags():
+def set_cc_opt_flags(environ_cp):
   """Set up architecture-dependent optimization flags.
 
   Also append CC optimization flags to bazel.rc..
@@ -605,11 +605,16 @@ def set_cc_opt_flags():
   Args:
     environ_cp: copy of the os.environ.
   """
-  default_cc_opt_flags = '-xHost -Wno-sign-compare'
+  if environ_cp.get('TF_NEED_SYCL') == '1':
+    arch_opt_flag = '-xHost'
+  else:
+    arch_opt_flag = '-march=native'
+
+  default_cc_opt_flags = '%s -Wno-sign-compare' % arch_opt_flag
   for opt in default_cc_opt_flags.split():
     write_to_bazelrc('build:opt --copt=%s' % opt)
   # It should be safe on the same build host.
-  write_to_bazelrc('build:opt --host_copt=-xHost')
+  write_to_bazelrc('build:opt --host_copt=%s' % arch_opt_flag)
   write_to_bazelrc('build:opt --define with_default_optimizations=true')
 
 def get_from_env_or_user_or_default(environ_cp, var_name, ask_for_var,
@@ -1042,7 +1047,7 @@ def main():
     print('Only CPU support is available for '
           'Intel® Extension for TensorFlow*.')
 
-  set_cc_opt_flags()
+  set_cc_opt_flags(environ_cp)
   set_system_libs_flag(environ_cp)
 
   system_specific_test_config(os.environ)
