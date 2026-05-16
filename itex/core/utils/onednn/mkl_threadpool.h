@@ -21,6 +21,7 @@ limitations under the License.
 #include <algorithm>
 #include <list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -75,36 +76,36 @@ inline void run_jobs(bool balance, int i, int n, int njobs,
 struct MklDnnThreadPool : public threadpool_iface {
   MklDnnThreadPool() = default;
 
-  explicit MklDnnThreadPool(const OpKernelContext* ctx, int num_threads = -1) {
-    eigen_interface_ = ctx->eigen_cpu_device().getPool();
-    num_threads = std::min(eigen_interface_->NumThreads(), num_threads);
-    num_threads_ =
-        (num_threads == -1) ? eigen_interface_->NumThreads() : num_threads;
-  }
+  explicit MklDnnThreadPool(const OpKernelContext* ctx, int num_threads = -1)
+      : MklDnnThreadPool(ctx->eigen_cpu_device().getPool(), num_threads) {}
+
+  explicit MklDnnThreadPool(Eigen::ThreadPoolInterface* eigen_interface,
+                            int num_threads = -1)
+      : eigen_interface_(eigen_interface),
+        num_threads_(NormalizeThreadCount(eigen_interface, num_threads)) {}
+
   int get_num_threads() const override { return num_threads_; }
   bool get_in_parallel() const override {
     return (eigen_interface_->CurrentThreadId() != -1) ? true : false;
   }
-  uint64_t get_flags() const override { return ASYNCHRONOUS; }
+  uint64_t get_flags() const override { return 0; }
   void parallel_for(int n, const std::function<void(int, int)>& fn) override {
-    wait();
-
     // Should never happen (handled by DNNL)
-    if (n == 0) {
-      pending_jobs_.reset();
-      return;
-    }
+    if (n == 0) return;
 
     // Should never happen (handled by DNNL)
     if (n == 1) {
       fn(0, 1);
-      pending_jobs_.reset();
       return;
     }
 
     int nthr = get_num_threads();
     int njobs = std::min(n, nthr);
     bool balance = (nthr < n);
+    if (njobs <= 1) {
+      run_jobs(balance, 0, n, njobs, fn);
+      return;
+    }
 
     // If use_caller_thread, schedule njobs-1 jobs to thread pool and run last
     // job directly.
@@ -114,32 +115,60 @@ struct MklDnnThreadPool : public threadpool_iface {
                                      // TF_ONEDNN_THREADPOOL_USE_CALLER_THREAD
                                      // default is false
     const int njobs_to_schedule = use_caller_thread ? njobs - 1 : njobs;
-    pending_jobs_ = std::make_shared<BlockingCounter>(njobs_to_schedule);
+    BlockingCounter pending_jobs(njobs_to_schedule);
     for (int i = 0; i < njobs_to_schedule; i++) {
       eigen_interface_->ScheduleWithHint(
-          [balance, i, n, njobs, fn, pending_jobs = pending_jobs_]() {
+          [balance, i, n, njobs, &fn, &pending_jobs]() {
             run_jobs(balance, i, n, njobs, fn);
-            pending_jobs->DecrementCount();
+            pending_jobs.DecrementCount();
           },
           i, i + 1);
     }
     if (use_caller_thread) {
       run_jobs(balance, njobs - 1, n, njobs, fn);
     }
+    pending_jobs.Wait();
   }
-  void wait() override {
-    if (pending_jobs_) {
-      pending_jobs_->Wait();
-      pending_jobs_.reset();
-    }
+  void wait() override {}
+  ~MklDnnThreadPool() override = default;
+
+  bool Matches(Eigen::ThreadPoolInterface* eigen_interface,
+               int num_threads) const {
+    return eigen_interface_ == eigen_interface &&
+           num_threads_ == NormalizeThreadCount(eigen_interface, num_threads);
   }
-  ~MklDnnThreadPool() override { wait(); }
 
  private:
+  static int NormalizeThreadCount(Eigen::ThreadPoolInterface* eigen_interface,
+                                  int num_threads) {
+    int max_threads = eigen_interface->NumThreads();
+    if (num_threads == -1) return max_threads;
+    if (num_threads < 1) {
+      return 1;
+    }
+    return std::min(max_threads, num_threads);
+  }
+
   Eigen::ThreadPoolInterface* eigen_interface_ = nullptr;
-  std::shared_ptr<BlockingCounter> pending_jobs_;
   int num_threads_ = 1;  // Execute in caller thread.
 };
+
+inline MklDnnThreadPool* GetMklDnnThreadPool(const OpKernelContext* ctx,
+                                             int num_threads = -1) {
+  auto* eigen_interface = ctx->eigen_cpu_device().getPool();
+  static std::mutex mu;
+  static std::vector<std::unique_ptr<MklDnnThreadPool>> threadpools;
+
+  std::lock_guard<std::mutex> lock(mu);
+  for (const auto& threadpool : threadpools) {
+    if (threadpool->Matches(eigen_interface, num_threads)) {
+      return threadpool.get();
+    }
+  }
+
+  threadpools.emplace_back(new MklDnnThreadPool(eigen_interface, num_threads));
+  return threadpools.back().get();
+}
 
 }  // namespace itex
 

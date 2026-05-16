@@ -241,7 +241,7 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   // threadpool runtime, so create a threadpool interop stream for CPU kernels.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
-  MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
+  MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
   dnnl::stream tp_stream =
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
@@ -250,7 +250,7 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
 #ifdef CC_THREADPOOL_BUILD
   // CPU and C++ BUILD with eigen thread pool
   if (num_thread == 1) return dnnl::stream(engine);
-  MklDnnThreadPool* eigen_tp = new MklDnnThreadPool(&ctx, num_thread);
+  MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
   dnnl::stream tp_stream =
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
