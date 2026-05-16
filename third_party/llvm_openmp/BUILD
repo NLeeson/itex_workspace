@@ -60,12 +60,26 @@ genrule(
     cmd = "perl $(location runtime/tools/generate-def.pl) -D arch_32e -D msvc_compat -D norm -o omp_dll.tmp external/llvm_openmp/runtime/src/dllexports; mv omp_dll.tmp $@",
 )
 
-# Bazel doesn't accept .txt as an input, rename the ldscript to .inc to workaround.
+# Bazel doesn't accept .txt as an input, rename the ldscript to .inc and
+# filter disabled optional exports to match the generated kmp_config.h.
 genrule(
     name = "ldscript",
     srcs = ["runtime/src/exports_so.txt"],
     outs = ["exports_so.inc"],
-    cmd = "cp $(location runtime/src/exports_so.txt) $@",
+    cmd = """
+awk '
+    /^[[:space:]]*#if USE_DEBUGGER/ { skip = 1; next }
+    /^[[:space:]]*#endif \\/\\* USE_DEBUGGER \\*\\// { skip = 0; next }
+    /^[[:space:]]*#if USE_ITT_BUILD/ { skip = 1; next }
+    /^[[:space:]]*#endif \\/\\* USE_ITT_BUILD \\*\\// { skip = 0; next }
+    skip { next }
+    /^[[:space:]]*#if KMP_USE_MONITOR/ { next }
+    /^[[:space:]]*#endif[[:space:]]*/ { next }
+    /ompt_start_tool/ { next }
+    /__kmp_reset_stats/ { next }
+    { print }
+' $(location runtime/src/exports_so.txt) > $@
+""",
 )
 
 genrule(
