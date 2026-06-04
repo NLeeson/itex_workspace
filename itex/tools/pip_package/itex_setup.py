@@ -68,9 +68,9 @@ if 'rc' in _VERSION:
 REQUIRED_PACKAGES.append('wheel')
 REQUIRED_PACKAGES.append('tensorflow~=2.16.0')
 REQUIRED_PACKAGES.append('numpy>=1.24.0')
-REQUIRED_PACKAGES.append('protobuf<4.24')
-REQUIRED_PACKAGES.append('absl-py==1.4.0')
-REQUIRED_PACKAGES.append('setuptools==69.5.1')
+REQUIRED_PACKAGES.append('protobuf>=4.25.3,<5.0.0')
+REQUIRED_PACKAGES.append('absl-py>=1.4.0,<3')
+REQUIRED_PACKAGES.append('packaging>=24.0')
 CONSOLE_SCRIPTS = []
 
 
@@ -139,7 +139,7 @@ setup(
     #exclude_package_data={
     #    'intel_extension_for_tensorflow': ['tools']
     #},
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     zip_safe=False,
     distclass=BinaryDistribution,
     extras_require={

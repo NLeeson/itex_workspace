@@ -15,11 +15,11 @@ __pycache__
 [Bb]uild/
 *.whl
 build_tmp
-
 AGENTS.md
 GEMINI.md
 build_changelog
 WHL*/
 .codex
+.agents
 .itex_configure.bazelrc
 .bazelrc.user

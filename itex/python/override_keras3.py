@@ -87,8 +87,9 @@ def override_keras3():
     if os.environ.get("TF_USE_LEGACY_KERAS", None) in ("true", "True", "1"):
         return
     try:
-        from pkg_resources import packaging  # pylint: disable=import-outside-toplevel
-        version = packaging.version.parse
+        #from pkg_resources import packaging  # pylint: disable=import-outside-toplevel
+        #version = packaging.version.parse
+        from packaging.version import parse as version
         if version(keras.__version__) >= version("3.0.0"):
             keras.src.trainers.trainer.Trainer.compile = itex_model_compile
             keras.src.backend.tensorflow.trainer.TensorFlowTrainer.predict = itex_predict

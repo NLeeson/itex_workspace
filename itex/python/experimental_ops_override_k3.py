@@ -84,8 +84,9 @@ def experimental_ops_override():
     using itex api in some tf and keras functions.
     '''
     try:
-        from pkg_resources import packaging  # pylint: disable=import-outside-toplevel
-        version = packaging.version.parse
+        #from pkg_resources import packaging  # pylint: disable=import-outside-toplevel
+        #version = packaging.version.parse
+        from packaging.version import parse as version
         if version(tf.__version__) < version("2.16.1"):
             return
 
