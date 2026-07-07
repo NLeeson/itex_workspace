@@ -41,8 +41,7 @@ def copy_func(f, name=None):
 
 
 keras_model_compile = copy_func(keras.src.trainers.trainer.Trainer.compile)
-keras_model_predict = copy_func(
-    keras.src.backend.tensorflow.trainer.TensorFlowTrainer.predict)
+keras_model_predict = copy_func(keras.src.backend.tensorflow.trainer.TensorFlowTrainer.predict)
 
 
 def itex_model_compile(self,
@@ -71,9 +70,7 @@ def itex_model_compile(self,
         quit()
 
 
-def itex_predict(
-    self, x, batch_size=None, verbose="auto", steps=None, callbacks=None
-):
+def itex_predict(self, x, batch_size=None, verbose="auto", steps=None, callbacks=None):
     if ((not self.jit_compile) and os.environ.get("ITEX_DISABLE_XLA", "0") in ("false", "0") and (not XLA_AUTO_CLUSTER)):
         print("This keras model is not jit compiled, please compile it or use legacy keras or set ITEX_DISABLE_XLA=1")
         quit()
@@ -99,5 +96,4 @@ def override_keras3():
         format_str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         logging.basicConfig(level=logging.INFO, format=format_str)
         logger = logging.getLogger(__name__)
-        logger.warning(
-            "itex.override_keras3 failed")  # pylint: disable=line-too-long
+        logger.warning("itex.override_keras3 failed")  # pylint: disable=line-too-long
