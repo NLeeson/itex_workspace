@@ -2192,6 +2192,7 @@ itex_gpu_library(
     visibility = ["//visibility:public"],
     deps = [
         "//itex:core",
+        "//itex/core/kernels/gpu:softmax_op",
     ],
     alwayslink = True,
 )

@@ -270,9 +270,10 @@ inline void Forward(OpKernelContext* ctx, const Tensor& query,
       1.0f / std::sqrt(static_cast<float>(head_size)), use_mask);
   LaunchElementwise<ScaleAndMaskKernel>(ctx, score_count, scale_and_mask);
 
-  SoftmaxFunctor<GPUDevice, float>()(ctx->eigen_gpu_device(),
-                                     softmax->flat_inner_dims<float>(), softmax,
-                                     false);
+  SoftmaxFunctor<GPUDevice, float>()(
+      ctx->eigen_gpu_device(),
+      static_cast<const Tensor&>(*softmax).flat_inner_dims<float>(), softmax,
+      false);
   const float dropout_scale = use_dropout ? 1.0f / (1.0f - dropout_prob) : 1.0f;
   ApplyDropout apply_dropout(
       softmax->flat<float>().data(),
