@@ -23,7 +23,7 @@ new file mode 100644
 index 00000000..bc4540f7
 --- /dev/null
 +++ b/lm_eval/models/gemma.py
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,77 @@
 +import os
 +import numpy as np
 +import keras
@@ -58,10 +58,9 @@ index 00000000..bc4540f7
 +    @property
 +    def batch_size(self):
 +        raise NotImplementedError()
-+    
++
 +    @property
-+    def device(self):
-+        raise NotImplementedError()
++    def device(self): raise NotImplementedError()
 +
 +    def tok_encode(self, string: str):
 +        raise NotImplementedError()
@@ -90,7 +89,6 @@ index 00000000..bc4540f7
 +            cont_logits = ops.squeeze(ops.take_along_axis(ops.squeeze(log_softmax, 0), ops.expand_dims(cont_token, -1), axis=1), -1)
 +            answer = (float(ops.convert_to_numpy(ops.sum(cont_logits))), bool(ops.convert_to_numpy(max_equal)))
 +            results.append(answer)
-+            
 +        return results
 +
 +    def greedy_until(self, requests):
