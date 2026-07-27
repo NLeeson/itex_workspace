@@ -2184,6 +2184,19 @@ itex_gpu_library(
 )
 
 itex_gpu_library(
+    name = "generic_mha_op",
+    srcs = ["generic_mha_op.cc"],
+    hdrs = ["generic_mha_kernels.h"],
+    copts = tf_copts(),
+    linkstatic = 1,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//itex:core",
+    ],
+    alwayslink = True,
+)
+
+itex_gpu_library(
     name = "rms_norm_ops",
     srcs = [
         "rms_norm_op.cc",
@@ -2327,6 +2340,7 @@ GPU_KERNELS = [
     ":fused_random_op",
     ":gather_op",
     ":gather_nd_op",
+    ":generic_mha_op",
     ":histogram_op",
     ":inplace_ops",
     ":in_topk_op",

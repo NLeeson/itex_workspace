@@ -98,11 +98,15 @@ def scaled_dot_product_attention(query,
     use_xpu = config.list_logical_devices('XPU')
     # If run on cpu, fast sdp kernel only support inference. If run on xpu, fmha can properly run in the forward kernel,
     # but in the backward kernel, it can be only available when the q_seq_len <= 512 and head_size <= 64.
-    can_use_fast_sdp = (not use_xpu and not is_training) or \
+    can_use_xetla_sdp = (not use_xpu and not is_training) or \
                         (use_xpu and is_xehpc() and has_xmx() and \
                         (query.dtype == tf.bfloat16 or query.dtype == tf.float16) and \
                         is_causal == False and \
                         (not is_training or (q_seq_len <= 512 and head_size <= 64)))
+    # The generic float32 kernel uses oneDNN batched matmuls plus SYCL masking,
+    # dropout, and softmax-gradient kernels. It intentionally covers XPU
+    # devices for which the XeTLA half/bfloat16 implementation is unavailable.
+    can_use_generic_sdp = bool(use_xpu) and query.dtype == tf.float32
 
     def sdp():
         i_dtype = query.dtype
@@ -151,7 +155,7 @@ def scaled_dot_product_attention(query,
             dropout_mask = math_ops.greater_equal(random_tensor, dropout_p)
         else:
             dropout_mask = False
-        if not is_training:
+        if not is_training and query.dtype != tf.float32:
             output = load_ops_library.scaled_dot_product_attention_inference(
                 query=query, 
                 key=key, 
@@ -161,7 +165,7 @@ def scaled_dot_product_attention(query,
                 use_causal=False,
                 is_inference=True)
         else:
-            if use_legacy_implementation:
+            if use_legacy_implementation or query.dtype == tf.float32:
                 output, _, _ = load_ops_library.scaled_dot_product_attention(
                     query=query, 
                     key=key, 
@@ -183,7 +187,7 @@ def scaled_dot_product_attention(query,
                     use_dropout=use_dropout)
         return output
 
-    if use_fast_attention and can_use_fast_sdp:
+    if use_fast_attention and (can_use_xetla_sdp or can_use_generic_sdp):
         output = fast_sdp()
     else:
         output = sdp()      
