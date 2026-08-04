@@ -64,10 +64,23 @@ cc_library(
 )
 
 cc_library(
+    name = "tf_eigen_threadpool_bridge",
+    srcs = [
+        "tf_eigen_threadpool_bridge.cc",
+    ],
+    deps = [
+        "@local_config_tf//:tf_header_lib",
+    ],
+)
+
+cc_library(
     name = "common_utils",
     srcs = glob(
         [
             "*.cc",
+        ],
+        exclude = [
+            "tf_eigen_threadpool_bridge.cc",
         ],
     ),
     hdrs = glob(
@@ -82,6 +95,7 @@ cc_library(
     linkstatic = 1,
     deps = [
         ":device_gpu_impl",
+        ":tf_eigen_threadpool_bridge",
         "//itex/core/graph:config_util_hdr",
         "//itex/core/utils/gtl:gtl_libs",
         "//itex/core/utils/tensor_bundle:byteswaparray",
