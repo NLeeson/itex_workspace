@@ -1,6 +1,7 @@
 build --per_file_copt='(.*/)?bcm\.c@-O2'
 
 build --nocheck_visibility
+build --experimental_cc_implementation_deps
 # This config option is used for CPU backend.
 build:cpu --define=build_with_onednn=true
 build:cpu --define=build_with_onednn_graph=true
