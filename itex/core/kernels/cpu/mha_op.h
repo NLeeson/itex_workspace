@@ -67,11 +67,12 @@ class FmhaFunctor {
   using Tvec = typename TTypes<T>::Flat;
   using Fvec = typename TTypes<float>::Flat;
 
-  void operator()(const Tensor& query, const Tensor& key, const Tensor& value,
+  void operator()(const OpKernelContext* ctx, const Tensor& query,
+                  const Tensor& key, const Tensor& value,
                   int64_t batch_size, int64_t q_seq_len, int64_t num_heads,
                   int64_t head_size, int64_t k_seq_len, bool use_mask,
-                  bool use_causal, bool use_dropout, const Tensor& atten_mask,
-                  const Tensor& dropout_mask, float dropout_prob,
+                  bool use_causal, bool use_dropout, const Tensor* atten_mask,
+                  const Tensor* dropout_mask, float dropout_prob,
                   Tensor* output) {
     int64_t q_stride_b = num_heads * q_seq_len * head_size;
     int64_t q_stride_h = q_seq_len * head_size;
@@ -93,7 +94,7 @@ class FmhaFunctor {
     int64_t q_slice = (q_seq_len - 1) / q_split_size + 1;
     // Increase num_thread by 1 to align with the increment by 1 of
     // GetThreadNum() below.
-    int64_t num_thread = GetNumThreads() + 1;
+    int64_t num_thread = GetNumThreads(ctx) + 1;
 
     // Allocate per thread temp buf (float type).
     // Use float for intermediate computation to avoid overflow issues.
@@ -134,14 +135,14 @@ class FmhaFunctor {
     Eigen::TensorOpCost cost(load_cost, store_cost, compute_cost);
 
     ParallelFor(
-        batch_size * num_heads * q_slice, cost,
+        ctx, batch_size * num_heads * q_slice, cost,
         [&](int64_t begin, int64_t end) {
           int64_t i = 0, j = 0, k = 0;
           DataIndexInit(begin, &i, batch_size, &j, num_heads, &k, q_slice);
 
           // To deal with the case that Eigen thread pool may assign a -1
           // thread_idx.
-          int thread_idx = GetThreadNum() + 1;
+          int thread_idx = GetThreadNum(ctx) + 1;
           float* buf_ptr = buf_data + thread_idx * size_per_thread;
           float* qk_data = buf_ptr;
           float* qk_max_data = qk_data + q_split_size * kv_split_size;

@@ -1181,6 +1181,9 @@ Tensor* PersistentTensor::AccessTensor(OpKernelConstruction* context) {
 Tensor* PersistentTensor::AccessTensor(OpKernelContext* context) {
   return &tensor_;
 }
+void CheckNotInComputeAsync(OpKernelContext* ctx,
+                            const char* correct_macro_name) {}
+
 const Eigen::ThreadPoolDevice& OpKernelContext::eigen_cpu_device() const {
   ITEX_CHECK(ctx_ != nullptr);
 
