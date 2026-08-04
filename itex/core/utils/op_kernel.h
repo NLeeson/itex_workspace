@@ -385,6 +385,13 @@ class OpKernelContext {
     return num_threads;
   }
 
+extern "C" {
+inline void ITEX_SetSharedEigenThreadPool(void* eigen_device_ptr) {
+  OpKernelContext::set_shared_eigen_cpu_device(
+      static_cast<const Eigen::ThreadPoolDevice*>(eigen_device_ptr));
+}
+}
+
   static void set_shared_eigen_cpu_device(const Eigen::ThreadPoolDevice* device) {
     g_shared_eigen_cpu_device() = device;
   }
