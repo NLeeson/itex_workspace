@@ -1,4 +1,9 @@
-load("//itex:itex.bzl", "cc_library", "if_cc_threadpool_build")
+load(
+    "//itex:itex.bzl",
+    "cc_library",
+    "if_cc_threadpool_build",
+    "if_gpu_or_root_sycl_build",
+)
 load("//third_party/onednn:build_defs.bzl", "onednn_deps", "onednn_graph_deps")
 
 cc_library(
@@ -18,7 +23,10 @@ cc_library(
     deps = [
         "//itex/core/utils:common_utils",
         "//itex/core/utils:tf_eigen_threadpool_bridge",
-    ] + onednn_deps(),
+    ] + if_gpu_or_root_sycl_build([
+        "//itex/core/devices/gpu:eigen_stream_device",
+        "//itex/core/devices/gpu:gpu_info",
+    ]) + onednn_deps(),
 )
 
 cc_library(
