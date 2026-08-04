@@ -1,5 +1,14 @@
 #ifndef ITEX_BUILD_JAX
 
+// This bridge always accesses TensorFlow's CPU Eigen device, even when it is
+// compiled as part of the XPU build graph. The XPU transition adds
+// EIGEN_USE_GPU globally; upstream Eigen interprets that macro as CUDA unless
+// HIP is selected, which makes the Tensor header include cuda_runtime.h.
+// Remove GPU mode locally before any TensorFlow/Eigen header is included.
+#ifdef EIGEN_USE_GPU
+#undef EIGEN_USE_GPU
+#endif
+
 // TensorFlow compiles DeviceBase's Eigen CPU device support with this macro
 // enabled. It must be defined before including TensorFlow/Eigen headers so
 // Eigen::ThreadPoolDevice is fully defined rather than only forward-declared.
