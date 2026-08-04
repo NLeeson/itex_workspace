@@ -37,11 +37,3 @@ else:
     from intel_extension_for_tensorflow.python.experimental_ops_override_k3 import experimental_ops_override
 
 from intel_extension_for_tensorflow.python.override_keras3 import override_keras3
-
-try:
-    from intel_extension_for_tensorflow.python._pywrap_itex import ITEX_SetSharedEigenThreadPool
-    tf_eigen_ptr = getattr(tensorflow.pywrap_tensorflow, "GetEigenCpuDevicePointer", lambda: 0)()
-    if tf_eigen_ptr:
-        ITEX_SetSharedEigenThreadPool(tf_eigen_ptr)
-except Exception:
-    pass
