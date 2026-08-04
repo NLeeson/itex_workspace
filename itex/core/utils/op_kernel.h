@@ -385,6 +385,15 @@ class OpKernelContext {
     return num_threads;
   }
 
+  static void set_shared_eigen_cpu_device(const Eigen::ThreadPoolDevice* device) {
+    g_shared_eigen_cpu_device() = device;
+  }
+
+  static const Eigen::ThreadPoolDevice*& g_shared_eigen_cpu_device() {
+    static const Eigen::ThreadPoolDevice* shared_device = nullptr;
+    return shared_device;
+  }
+
   static const Eigen::ThreadPoolDevice& eigen_cpu_device_singleton() {
     static Eigen::ThreadPool threadpool(eigen_cpu_threadpool_size_singleton());
     static Eigen::ThreadPoolDevice threadpool_device(
@@ -396,9 +405,9 @@ class OpKernelContext {
   }
 
   const Eigen::ThreadPoolDevice& eigen_cpu_device() const {
-    // TODO(itex): CPU should get thread pool device from local device:
-    // *device()->eigen_cpu_device();
-    // This helps to identity NUMA affinity.
+    if (g_shared_eigen_cpu_device() != nullptr) {
+      return *g_shared_eigen_cpu_device();
+    }
     return eigen_cpu_device_singleton();
   }
 
