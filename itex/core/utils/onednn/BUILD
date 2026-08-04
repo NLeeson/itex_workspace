@@ -17,6 +17,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//itex/core/utils:common_utils",
+        "//itex/core/utils:tf_eigen_threadpool_bridge",
     ] + onednn_deps(),
 )
 
