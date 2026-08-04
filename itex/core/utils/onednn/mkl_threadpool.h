@@ -19,6 +19,7 @@ limitations under the License.
 #define ITEX_CORE_UTILS_ONEDNN_MKL_THREADPOOL_H_
 
 #include <algorithm>
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -36,6 +37,7 @@ limitations under the License.
 #include "itex/core/utils/blocking_counter.h"
 #include "itex/core/utils/cpu_info.h"
 #include "itex/core/utils/op_kernel.h"
+#include "itex/core/utils/tf_eigen_threadpool_bridge.h"
 #include "itex/core/utils/threadpool.h"
 
 namespace itex {
@@ -46,13 +48,6 @@ using dnnl::threadpool_interop::threadpool_iface;
 // divisible by 'teams' and has a remainder 'r', the first 'r' teams have one
 // unit of work more than the rest. Returns the range of work that belongs to
 // the team 'tid'.
-// Parameters
-//   n        Total number of jobs.
-//   team     Number of workers.
-//   tid      Current thread_id.
-//   n_start  start of range operated by the thread.
-//   n_end    end of the range operated by the thread.
-
 template <typename T, typename U>
 inline void balance211(T n, U team, U tid, T* n_start, T* n_end) {
   if (team <= 1 || n == 0) {
@@ -61,7 +56,7 @@ inline void balance211(T n, U team, U tid, T* n_start, T* n_end) {
     return;
   }
   T min_per_team = n / team;
-  T remainder = n - min_per_team * team;  // i.e., n % teams.
+  T remainder = n - min_per_team * team;
   *n_start = tid * min_per_team + std::min(tid, remainder);
   *n_end = *n_start + min_per_team + (tid < remainder);
 }
@@ -77,103 +72,137 @@ inline void run_jobs(bool balance, int i, int n, int njobs,
   }
 }
 
+namespace mkl_threadpool_internal {
+
+struct ScheduledJob {
+  bool balance;
+  int index;
+  int work_items;
+  int num_jobs;
+  const std::function<void(int, int)>* function;
+  BlockingCounter* pending_jobs;
+};
+
+inline void RunScheduledJob(void* opaque_job) {
+  std::unique_ptr<ScheduledJob> job(
+      static_cast<ScheduledJob*>(opaque_job));
+#ifdef __linux__
+  thread_local const bool named = []() {
+    pthread_setname_np(pthread_self(), "itex_onednn");
+    return true;
+  }();
+  (void)named;
+#endif
+  run_jobs(job->balance, job->index, job->work_items, job->num_jobs,
+           *job->function);
+  job->pending_jobs->DecrementCount();
+}
+
+}  // namespace mkl_threadpool_internal
+
 struct MklDnnThreadPool : public threadpool_iface {
   MklDnnThreadPool() = default;
 
   explicit MklDnnThreadPool(const OpKernelContext* ctx, int num_threads = -1)
-      : MklDnnThreadPool(ctx->eigen_cpu_device().getPool(), num_threads) {}
+      : MklDnnThreadPool(
+            ::ITEX_GetTensorFlowThreadPool(
+                const_cast<OpKernelContext*>(ctx)->Get()),
+            num_threads) {}
 
-  explicit MklDnnThreadPool(Eigen::ThreadPoolInterface* eigen_interface,
+  explicit MklDnnThreadPool(void* tensorflow_threadpool,
                             int num_threads = -1)
-      : eigen_interface_(eigen_interface),
-        num_threads_(NormalizeThreadCount(eigen_interface, num_threads)) {}
+      : tensorflow_threadpool_(tensorflow_threadpool),
+        num_threads_(NormalizeThreadCount(tensorflow_threadpool,
+                                          num_threads)) {
+    ITEX_CHECK(tensorflow_threadpool_ != nullptr)
+        << "TensorFlow Eigen CPU threadpool is unavailable";
+  }
 
   int get_num_threads() const override { return num_threads_; }
-  bool get_in_parallel() const override {
-    return (eigen_interface_->CurrentThreadId() != -1) ? true : false;
-  }
-  uint64_t get_flags() const override { return 0; }
-  void parallel_for(int n, const std::function<void(int, int)>& fn) override {
-    // Should never happen (handled by DNNL)
-    if (n == 0) return;
 
-    // Should never happen (handled by DNNL)
-    if (n == 1) {
+  bool get_in_parallel() const override {
+    return tensorflow_threadpool_ != nullptr &&
+           ::ITEX_TensorFlowThreadPoolCurrentThreadId(
+               tensorflow_threadpool_) != -1;
+  }
+
+  uint64_t get_flags() const override { return 0; }
+
+  void parallel_for(int n, const std::function<void(int, int)>& fn) override {
+    if (n == 0) return;
+    if (n == 1 || tensorflow_threadpool_ == nullptr) {
       fn(0, 1);
       return;
     }
 
-    int nthr = get_num_threads();
-    int njobs = std::min(n, nthr);
-    bool balance = (nthr < n);
+    const int nthr = get_num_threads();
+    const int njobs = std::min(n, nthr);
+    const bool balance = nthr < n;
     if (njobs <= 1) {
       run_jobs(balance, 0, n, njobs, fn);
       return;
     }
 
-    // If use_caller_thread, schedule njobs-1 jobs to thread pool and run last
-    // job directly.
-    const bool use_caller_thread = true;
-    const int njobs_to_schedule = use_caller_thread ? njobs - 1 : njobs;
+    // The caller executes one job while the remaining jobs run on the
+    // TensorFlow-owned intra-op pool. TensorFlow retains pool ownership and
+    // lifecycle management.
+    const int njobs_to_schedule = njobs - 1;
     BlockingCounter pending_jobs(njobs_to_schedule);
-    for (int i = 0; i < njobs_to_schedule; i++) {
-      eigen_interface_->ScheduleWithHint(
-          [balance, i, n, njobs, &fn, &pending_jobs]() {
-#ifdef __linux__
-            thread_local const bool named = []() {
-              pthread_setname_np(pthread_self(), "itex_onednn");
-              return true;
-            }();
-            (void)named;
-#endif
-            run_jobs(balance, i, n, njobs, fn);
-            pending_jobs.DecrementCount();
-          },
-          i, i + 1);
+    for (int i = 0; i < njobs_to_schedule; ++i) {
+      auto* job = new mkl_threadpool_internal::ScheduledJob{
+          balance, i, n, njobs, &fn, &pending_jobs};
+      ::ITEX_TensorFlowThreadPoolScheduleWithHint(
+          tensorflow_threadpool_,
+          &mkl_threadpool_internal::RunScheduledJob, job, i, i + 1);
     }
-    if (use_caller_thread) {
-      run_jobs(balance, njobs - 1, n, njobs, fn);
-    }
+
+    run_jobs(balance, njobs - 1, n, njobs, fn);
     pending_jobs.Wait();
   }
+
   void wait() override {}
   ~MklDnnThreadPool() override = default;
 
-  bool Matches(Eigen::ThreadPoolInterface* eigen_interface,
-               int num_threads) const {
-    return eigen_interface_ == eigen_interface &&
-           num_threads_ == NormalizeThreadCount(eigen_interface, num_threads);
+  bool Matches(void* tensorflow_threadpool, int num_threads) const {
+    return tensorflow_threadpool_ == tensorflow_threadpool &&
+           num_threads_ ==
+               NormalizeThreadCount(tensorflow_threadpool, num_threads);
   }
 
  private:
-  static int NormalizeThreadCount(Eigen::ThreadPoolInterface* eigen_interface,
+  static int NormalizeThreadCount(void* tensorflow_threadpool,
                                   int num_threads) {
-    int max_threads = eigen_interface->NumThreads();
+    int max_threads = ::ITEX_TensorFlowThreadPoolNumThreads(
+        tensorflow_threadpool);
+    if (max_threads < 1) max_threads = 1;
     if (num_threads == -1) return max_threads;
-    if (num_threads < 1) {
-      return 1;
-    }
+    if (num_threads < 1) return 1;
     return std::min(max_threads, num_threads);
   }
 
-  Eigen::ThreadPoolInterface* eigen_interface_ = nullptr;
-  int num_threads_ = 1;  // Execute in caller thread.
+  void* tensorflow_threadpool_ = nullptr;  // Borrowed from TensorFlow.
+  int num_threads_ = 1;
 };
 
 inline MklDnnThreadPool* GetMklDnnThreadPool(const OpKernelContext* ctx,
                                              int num_threads = -1) {
-  auto* eigen_interface = ctx->eigen_cpu_device().getPool();
+  void* tensorflow_threadpool = ::ITEX_GetTensorFlowThreadPool(
+      const_cast<OpKernelContext*>(ctx)->Get());
+  ITEX_CHECK(tensorflow_threadpool != nullptr)
+      << "TensorFlow Eigen CPU threadpool is unavailable";
+
   static std::mutex mu;
   static std::vector<std::unique_ptr<MklDnnThreadPool>> threadpools;
 
   std::lock_guard<std::mutex> lock(mu);
   for (const auto& threadpool : threadpools) {
-    if (threadpool->Matches(eigen_interface, num_threads)) {
+    if (threadpool->Matches(tensorflow_threadpool, num_threads)) {
       return threadpool.get();
     }
   }
 
-  threadpools.emplace_back(new MklDnnThreadPool(eigen_interface, num_threads));
+  threadpools.emplace_back(
+      new MklDnnThreadPool(tensorflow_threadpool, num_threads));
   return threadpools.back().get();
 }
 
