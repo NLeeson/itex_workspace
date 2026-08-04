@@ -99,7 +99,6 @@ cc_library(
     linkstatic = 1,
     deps = [
         ":device_gpu_impl",
-        ":tf_eigen_threadpool_bridge",
         "//itex/core/graph:config_util_hdr",
         "//itex/core/utils/gtl:gtl_libs",
         "//itex/core/utils/tensor_bundle:byteswaparray",
