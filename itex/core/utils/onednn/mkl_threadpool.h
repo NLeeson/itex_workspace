@@ -27,6 +27,10 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
+#ifdef __linux__
+#include <pthread.h>
+#endif
+
 #include "dnnl.hpp"             // NOLINT(build/include_subdir)
 #include "dnnl_threadpool.hpp"  // NOLINT(build/include_subdir)
 #include "itex/core/utils/blocking_counter.h"
@@ -115,6 +119,13 @@ struct MklDnnThreadPool : public threadpool_iface {
     for (int i = 0; i < njobs_to_schedule; i++) {
       eigen_interface_->ScheduleWithHint(
           [balance, i, n, njobs, &fn, &pending_jobs]() {
+#ifdef __linux__
+            thread_local const bool named = []() {
+              pthread_setname_np(pthread_self(), "itex_onednn");
+              return true;
+            }();
+            (void)named;
+#endif
             run_jobs(balance, i, n, njobs, fn);
             pending_jobs.DecrementCount();
           },
