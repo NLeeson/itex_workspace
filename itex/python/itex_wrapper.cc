@@ -70,6 +70,9 @@ PYBIND11_MODULE(_pywrap_itex, m) {
   m.def("ITEX_GetConfig", &itex::ITEX_GetConfig);
   m.def("ITEX_IsXeHPC", &itex::ITEX_IsXeHPC);
   m.def("ITEX_HasXMX", &itex::ITEX_HasXMX);
+  m.def("ITEX_SetSharedEigenThreadPool", [](uintptr_t ptr) {
+    ITEX_SetSharedEigenThreadPool(reinterpret_cast<void*>(ptr));
+  });
 }
 
 }  // namespace itex
