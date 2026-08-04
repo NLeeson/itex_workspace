@@ -68,8 +68,11 @@ cc_library(
     srcs = [
         "tf_eigen_threadpool_bridge.cc",
     ],
-    deps = [
-        "@local_config_tf//:tf_header_lib",
+    hdrs = [
+        "tf_eigen_threadpool_bridge.h",
+    ],
+    implementation_deps = [
+        "@local_config_tf//:tf_private_header_lib",
     ],
 )
 
@@ -90,6 +93,7 @@ cc_library(
         exclude = [
             "ctstring.h",
             "ctstring_internal.h",
+            "tf_eigen_threadpool_bridge.h",
         ],
     ),
     linkstatic = 1,
