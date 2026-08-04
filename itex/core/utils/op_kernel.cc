@@ -35,27 +35,8 @@ limitations under the License.
 #include "itex/core/utils/traceme_encode.h"
 #include "protos/node_def.pb.h"
 #include "tensorflow/c/tf_tensor.h"
-//#include "tensorflow/core/framework/op_kernel.h"
-
-
-extern "C" const void* ITEX_GetTensorFlowEigenCpuDevice(
-    const void* opaque_context);
 
 namespace itex {
-
-const Eigen::ThreadPoolDevice&
-OpKernelContext::eigen_cpu_device() const {
-  ITEX_CHECK(ctx_ != nullptr);
-
-  const void* raw_device =
-      ::ITEX_GetTensorFlowEigenCpuDevice(ctx_);
-
-  ITEX_CHECK(raw_device != nullptr)
-      << "TensorFlow Eigen CPU device is unavailable";
-
-  return *static_cast<const Eigen::ThreadPoolDevice*>(raw_device);
-}
-
 
 /* static */ absl::Mutex OpTypeFactory::op_type_factory_mutex_(
     absl::kConstInit);
@@ -1201,21 +1182,6 @@ Tensor* PersistentTensor::AccessTensor(OpKernelContext* context) {
 }
 void CheckNotInComputeAsync(OpKernelContext* ctx,
                             const char* correct_macro_name) {}
-
-const Eigen::ThreadPoolDevice& OpKernelContext::eigen_cpu_device() const {
-  ITEX_CHECK(ctx_ != nullptr);
-
-  const auto* tf_context =
-      reinterpret_cast<const ::tensorflow::OpKernelContext*>(ctx_);
-
-  const auto* tf_device = tf_context->device();
-  ITEX_CHECK(tf_device != nullptr);
-
-  const auto* eigen_device = tf_device->eigen_cpu_device();
-  ITEX_CHECK(eigen_device != nullptr);
-
-  return *eigen_device;
-}
 
 template <>
 const Eigen::ThreadPoolDevice& OpKernelContext::eigen_device() const {

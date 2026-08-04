@@ -64,6 +64,9 @@ static dnnl::engine& FindOrCreateEngine(ITEX_GPUStream* stream) {
 }
 #endif
 
+// The dimensions order that DNNL internally uses for 2D activations
+// [Batch, Channel, Height, Width] and
+// for 2D filters [Out_Channel, In_Channel, Height, Width].
 typedef enum {
   Dim_N = 0,
   Dim_C = 1,
@@ -73,6 +76,9 @@ typedef enum {
   Dim_I = 1
 } DimensionIndex;
 
+// The dimensions order that DNNL internally uses for 3D activations
+// [Batch, Channel, Depth, Height, Width] and
+// for 3D filters [Out_Channel, In_Channel, Depth, Height, Width].
 typedef enum {
   Dim3d_N = 0,
   Dim3d_C = 1,
@@ -83,6 +89,21 @@ typedef enum {
   Dim3d_I = 1
 } DimensionIndex3D;
 
+// In oneDNN, the format (ex. NCHW) used to initialize a memory descriptor
+// (md) structure will no longer be recorded in its `format` field. Instead, it
+// will be set to a canonical `blocked` format for every fully described md.
+//
+// Currently, we query this `format` field while mapping oneDNN's data format
+// to TF's data format. Due to the above restriction, we will now get this data
+// format information from TF's `data_format` attribute (i.e. via
+// `TensorFormat`) for oneDNN.
+
+//  1) FORMAT_INVALID: for error-checking (ex. unsupported format)
+//  2) FORMAT_X, FORMAT_NC, FORMAT_TNC: to distinguish between DNNL tensors
+//     based on their dimensions in operators such as Softmax, i.e.:
+//        FORMAT_X   - 1D tensor
+//        FORMAT_NC  - 2D tensor
+//        FORMAT_TNC - 3D tensor
 enum class OneDnnTensorFormat {
   FORMAT_NHWC = 0,
   FORMAT_NCHW = 1,
@@ -94,6 +115,8 @@ enum class OneDnnTensorFormat {
   FORMAT_INVALID = 7,
 };
 
+// Enum for the order of dimensions of a TF 2D filter with shape [filter_height,
+// filter_width, in_channels, out_channels]
 typedef enum {
   TF_2DFILTER_DIM_H = 0,
   TF_2DFILTER_DIM_W = 1,
@@ -101,6 +124,8 @@ typedef enum {
   TF_2DFILTER_DIM_O = 3
 } TFFilterDims2d;
 
+// Enum for the order of dimensions of a TF 3D filter with shape [filter_depth,
+// filter_height, filter_width, in_channels, out_channels]
 typedef enum {
   TF_3DFILTER_DIM_P = 0,
   TF_3DFILTER_DIM_H = 1,
@@ -109,6 +134,8 @@ typedef enum {
   TF_3DFILTER_DIM_O = 4
 } TFFilterDims3d;
 
+// The dimensions order that oneDNN requires for the filter in a grouped
+// convolution (2D only)
 typedef enum {
   GROUP_FILTER_DIM_G = 0,
   GROUP_FILTER_DIM_O = 1,
@@ -117,9 +144,15 @@ typedef enum {
   GROUP_FILTER_DIM_W = 4
 } FilterGroupDims;
 
+/// Return oneDNN data type (memory::data_type) for input type T
+///
+/// @input None
+/// @return dnnl::memory::data_type corresponding to type T
 template <typename T>
 inline dnnl::memory::data_type OneDnnType();
 
+/// Instantiation for float type. Add similar instantiations for other
+/// type if needed.
 template <>
 inline dnnl::memory::data_type OneDnnType<float>() {
   return dnnl::memory::data_type::f32;
@@ -177,6 +210,7 @@ inline dnnl::engine& CreateDnnlEngine<GPUDevice>(const OpKernelContext& ctx) {
 }
 #endif  // INTEL_CPU_ONLY
 
+// Helper function to get global CPU oneDNN engine.
 inline dnnl::engine& GetCPUDnnlEngine() {
   static dnnl::engine cpu_engine = dnnl::engine(dnnl::engine::kind::cpu, 0);
   return cpu_engine;
@@ -185,9 +219,9 @@ inline dnnl::engine& GetCPUDnnlEngine() {
 template <>
 inline dnnl::engine& CreateDnnlEngine<CPUDevice>(
     const OpKernelContext& ctx) {
-  ITEX_CHECK(::ITEX_GetTensorFlowThreadPool(
-                 const_cast<OpKernelContext*>(&ctx)->Get()) != nullptr)
+  ITEX_CHECK(ctx.eigen_cpu_device().getPool() != nullptr)
       << "TensorFlow Eigen CPU threadpool is unavailable";
+
   return GetCPUDnnlEngine();
 }
 
@@ -195,12 +229,15 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
                                      const dnnl::engine& engine,
                                      int num_thread = -1) {
 #ifndef INTEL_CPU_ONLY
+  // GPU
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::gpu)
       << "Create oneDNN stream for unsupported engine.";
   auto* ITEX_GPU_stream = ctx.GetDeviceStream();
   return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
 #else
 #ifndef CC_BUILD
+  // The CPU Python wrapper loads the oneDNN CPU library built with the
+  // threadpool runtime, so create a threadpool interop stream for CPU kernels.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
   MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
@@ -208,13 +245,17 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
 #else
+// CPU and C++ BUILD
 #ifdef CC_THREADPOOL_BUILD
+  // CPU and C++ BUILD with eigen thread pool
   if (num_thread == 1) return dnnl::stream(engine);
   MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
   dnnl::stream tp_stream =
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
 #else
+  // CPU and C++ BUILD with OMP thread pool
+  // Default path, always assume it's CPU engine.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
   return dnnl::stream(engine);
@@ -242,6 +283,7 @@ inline dnnl::memory CreateDnnlMemory(const dnnl::memory::desc& md,
   }
 #endif  // INTEL_CPU_ONLY
 
+  // Default path, always assume it's CPU engine.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN memory for unsupported engine.";
   if (data_handle == nullptr)
@@ -250,6 +292,11 @@ inline dnnl::memory CreateDnnlMemory(const dnnl::memory::desc& md,
     return dnnl::memory(md, engine, data_handle);
 }
 
+// Map OneDnnTensorFormat to oneDNN format tag
+//
+// @input: OneDnnTensorFormat i.e. TensorFlow data format
+// @return: OneDNN's memory format tag corresponding to OneDnnTensorFormat.
+//          Fails with an error if invalid data format.
 inline dnnl::memory::format_tag OneDnnTensorFormatToTag(
     OneDnnTensorFormat format) {
   if (format == OneDnnTensorFormat::FORMAT_NHWC)
@@ -269,6 +316,14 @@ inline dnnl::memory::format_tag OneDnnTensorFormatToTag(
   return dnnl::memory::format_tag::undef;
 }
 
+/// Map TensorFlow data format into oneDNN data format. This is used in TF
+/// kernels which have `data_format` attributes, such as Conv/BatchNorm/...
+/// `TensorFormat` is original TF tensor attr, it's always NCHW or NHWC no
+/// matter the rank is 4D or 5D.
+///
+/// @input: TensorFlow data format, Boolean to indicate whether it's 2D format
+/// @return: OneDNN data format corresponding to TensorFlow data format;
+///          Fails with an error if invalid data format.
 inline OneDnnTensorFormat TFDataFormatToOneDnnDataFormat(TensorFormat format,
                                                          bool is_2d = true) {
   if (is_2d) {
@@ -283,6 +338,11 @@ inline OneDnnTensorFormat TFDataFormatToOneDnnDataFormat(TensorFormat format,
   return OneDnnTensorFormat::FORMAT_INVALID;
 }
 
+/// Map oneDNN data format into TensorFlow data format
+///
+/// @input: OneDNN data format
+/// @return: Tensorflow data format corresponding to oneDNN data format;
+///          Fails with an error if invalid data format.
 inline TensorFormat OneDnnDataFormatToTFDataFormat(OneDnnTensorFormat format) {
   if (format == OneDnnTensorFormat::FORMAT_NHWC ||
       format == OneDnnTensorFormat::FORMAT_NDHWC)
@@ -291,9 +351,20 @@ inline TensorFormat OneDnnDataFormatToTFDataFormat(OneDnnTensorFormat format) {
       format == OneDnnTensorFormat::FORMAT_NCDHW)
     return FORMAT_NCHW;
   ITEX_CHECK_OK(Status(TF_INVALID_ARGUMENT, "Unsupported data format"));
+
+  // Return to prevent compiler warnings, otherwise ITEX_CHECK_OK will ensure
+  // that we don't come here.
   return FORMAT_NHWC;
 }
 
+/// Map TensorShape object into dnnl::memory::dims required by oneDNN
+///
+/// This function will simply map input TensorShape into oneDNN dims
+/// naively. So it will preserve the order of dimensions. E.g., if
+/// input tensor is in NHWC format, then dims will be in NHWC format also.
+///
+/// @input TensorShape object in shape
+/// @return dnnl::memory::dims corresponding to TensorShape
 inline dnnl::memory::dims TFShapeToOneDnnDims(const TensorShape& shape) {
   if (shape.dims() == 0) {
     dnnl::memory::dims dims{shape.num_elements()};
@@ -306,9 +377,27 @@ inline dnnl::memory::dims TFShapeToOneDnnDims(const TensorShape& shape) {
   return dims;
 }
 
+/// Map TensorShape object into dnnl::memory::dims in NC...(NCHW/NCDHW) format
+/// since oneDnn has channel first logical dimension sequence requirement.
+///
+/// This function is a specific one than above function. It will map input
+/// TensorShape into oneDNN dims in NCHW/NCDHW format. So it may not preserve
+/// the order of dimensions. E.g., if input tensor is in NHWC format, then dims
+/// will be in NCHW format, and not in NHWC format.
+///
+/// Commonly used in below scenarios:
+/// 1) Create oneDNN primitive from TF tensor in kernel which has `data_format`
+///    attr, such as Conv/BatchNorm/Pooling;
+/// 2) Reorder TF/oneDNN tensors to same oneDNN format in kernel which has
+///    multiply inputs, such as AddN/Concat;
+///
+/// @input TensorShape object in shape, tensor format, Boolean to indicate
+///        whether it's 2D format
+/// @return dnnl::memory::dims in oneDNN required NC...(NCHW/NCDHW) format
 inline dnnl::memory::dims TFShapeToOneDnnDimsInNC(const TensorShape& shape,
                                                   TensorFormat format,
                                                   bool is_2d = true) {
+  // Check validity of format.
   ITEX_DCHECK_NE(
       static_cast<int>(TFDataFormatToOneDnnDataFormat(format, is_2d)),
       static_cast<int>(OneDnnTensorFormat::FORMAT_INVALID));
@@ -318,6 +407,8 @@ inline dnnl::memory::dims TFShapeToOneDnnDimsInNC(const TensorShape& shape,
     int c = shape.dim_size(GetTensorDimIndex(format, 'C'));
     int h = shape.dim_size(GetTensorDimIndex(format, 'H'));
     int w = shape.dim_size(GetTensorDimIndex(format, 'W'));
+
+    // oneDNN requires dimensions in NCHW format.
     return dnnl::memory::dims({n, c, h, w});
   } else {
     int n = shape.dim_size(GetTensorDimIndex<3>(format, 'N'));
@@ -325,13 +416,18 @@ inline dnnl::memory::dims TFShapeToOneDnnDimsInNC(const TensorShape& shape,
     int d = shape.dim_size(GetTensorDimIndex<3>(format, '0'));
     int h = shape.dim_size(GetTensorDimIndex<3>(format, '1'));
     int w = shape.dim_size(GetTensorDimIndex<3>(format, '2'));
+
+    // oneDNN requires dimensions in NCDHW format.
     return dnnl::memory::dims({n, c, d, h, w});
   }
 }
 
+/// Overloaded version of function TFShapeToOneDnnDimsInNC above.
+/// Input parameters are self-explanatory.
 inline dnnl::memory::dims OneDnnDimsInNC(const dnnl::memory::dims& in_dims,
                                          TensorFormat format,
                                          bool is_2d = true) {
+  // Validate format.
   ITEX_DCHECK_NE(
       static_cast<int>(TFDataFormatToOneDnnDataFormat(format, is_2d)),
       static_cast<int>(OneDnnTensorFormat::FORMAT_INVALID));
@@ -341,6 +437,8 @@ inline dnnl::memory::dims OneDnnDimsInNC(const dnnl::memory::dims& in_dims,
     int c = in_dims[GetTensorDimIndex(format, 'C')];
     int h = in_dims[GetTensorDimIndex(format, 'H')];
     int w = in_dims[GetTensorDimIndex(format, 'W')];
+
+    // OneDNN requires dimensions in NCHW format.
     return dnnl::memory::dims({n, c, h, w});
   } else {
     int n = in_dims[GetTensorDimIndex<3>(format, 'N')];
@@ -348,10 +446,19 @@ inline dnnl::memory::dims OneDnnDimsInNC(const dnnl::memory::dims& in_dims,
     int d = in_dims[GetTensorDimIndex<3>(format, '0')];
     int h = in_dims[GetTensorDimIndex<3>(format, '1')];
     int w = in_dims[GetTensorDimIndex<3>(format, '2')];
+
+    // OneDNN requires dimensions in NCDHW format.
     return dnnl::memory::dims({n, c, d, h, w});
   }
 }
 
+/// Map oneDNN dnnl::memory::dims object into TensorShape object.
+///
+/// This function will simply map input shape in OneDNN dnnl::memory::dims
+/// format in Tensorflow's TensorShape object by preserving dimension order.
+///
+/// @input OneDNN dnnl::memory::dims object
+/// @output TensorShape corresponding to dnnl::memory::dims
 inline TensorShape OneDnnDimsToTFShape(const dnnl::memory::dims& dims) {
   std::vector<int32> shape(dims.size(), -1);
   for (size_t d = 0; d < dims.size(); d++) {
@@ -363,6 +470,14 @@ inline TensorShape OneDnnDimsToTFShape(const dnnl::memory::dims& dims) {
   return ret;
 }
 
+/// Function to calculate strides given tensor shape in Tensorflow order
+/// E.g., if dims_tf_order is {1, 2, 3, 4}, then as per Tensorflow convention,
+/// dimension with size 1 is outermost dimension; while dimension with size 4 is
+/// innermost dimension. So strides for this tensor would be {4 * 3 * 2,
+/// 4 * 3, 4, 1}, i.e., {24, 12, 4, 1}.
+///
+/// @input Tensorflow shape in memory::dims type
+/// @return memory::dims containing strides for the tensor.
 inline dnnl::memory::dims CalculateTFStrides(
     const dnnl::memory::dims& dims_tf_order) {
   ITEX_CHECK_GT(dims_tf_order.size(), 0);
@@ -380,6 +495,8 @@ inline void* GetTensorBuffer(const Tensor* tensor) {
   return const_cast<void*>(static_cast<const void*>(tensor->flat<T>().data()));
 }
 
+// Create memory desc with format tag, it is the equivalent way to create memory
+// desc with strides in CreateBlockedMemDesc
 template <typename T>
 inline dnnl::memory::desc CreatePlainMemDescWithFormatTag(
     const dnnl::memory::dims& onednn_dims) {
@@ -424,14 +541,18 @@ inline dnnl::memory::desc CreatePlainMemDescWithFormatTag(
                               dnnl::memory::format_tag::abcdefghijkl);
 }
 
+// Helper function to reorder oneDNN memory without `OpKernelContext`.
 void ReorderMemoryInternal(const dnnl::memory* src_memory,
                            dnnl::memory* reorder_memory,
                            dnnl::stream& onednn_stream);
 
+// Reorder src memory to expected memory
 void ReorderMemory(const OpKernelContext& context,
                    const dnnl::memory* src_memory, dnnl::memory* reorder_memory,
                    const dnnl::engine& onednn_engine);
 
+// Weight cache is used to avoid weight reorder repetitively when target
+// weight block md is different frome original weight plain md.
 template <typename T>
 class WeightCacheManager {
  public:
@@ -440,11 +561,14 @@ class WeightCacheManager {
 
   bool IsEmpty() TF_LOCKS_EXCLUDED(mu_);
 
+  // Cache the reordered weight buffer & weight md as persistent tensors.
+  // Only one thread can execute this method at any given time.
   void SetCache(OpKernelContext* context,
                 const dnnl::memory::desc& weight_original_md,
                 const dnnl::memory::desc& weight_expected_md, void* weight_data,
                 const dnnl::engine& onednn_engine) TF_LOCKS_EXCLUDED(mu_);
 
+  // Get the cached weight buffer
   T* GetCache(OpKernelContext* context, const dnnl::memory::desc& expected_md)
       TF_LOCKS_EXCLUDED(mu_);
 
@@ -456,6 +580,8 @@ class WeightCacheManager {
   PersistentTensor weight_cached_md_ TF_GUARDED_BY(mu_);
 };
 
+// Bias cache is used to avoid scale the bias tensor repetitively in INT8
+// kernel
 template <typename T>
 class BiasCacheManager {
  public:
@@ -464,12 +590,15 @@ class BiasCacheManager {
 
   bool IsEmpty() TF_LOCKS_EXCLUDED(mu_);
 
+  // Cache the scaled bias buffer as persistent tensors.
+  // Only one thread can execute this method at any given time.
   void SetCache(OpKernelContext* context, const dnnl::memory::desc& bias_md,
                 const dnnl::primitive_attr& bias_attr, void* bias_data,
                 const dnnl::engine& onednn_engine,
                 const dnnl::memory& scales_mem = dnnl::memory())
       TF_LOCKS_EXCLUDED(mu_);
 
+  // Get the cached bias buffer
   T* GetCache(OpKernelContext* context) TF_LOCKS_EXCLUDED(mu_);
 
  private:

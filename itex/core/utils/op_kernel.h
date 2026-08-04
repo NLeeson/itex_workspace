@@ -350,7 +350,57 @@ class OpKernelContext {
   // Status mutable_output(StringPiece name, Tensor** tensor);
   Tensor* mutable_output(int index);
 
-  const Eigen::ThreadPoolDevice& eigen_cpu_device() const;
+  static int eigen_cpu_threadpool_size_singleton() {
+    static int num_threads = []() {
+      const int max_threads = port::NumSchedulableCPUs();
+      const int default_threads =
+          (max_threads + port::NumHyperthreadsPerCore() - 1) /
+          port::NumHyperthreadsPerCore();
+      int64_t configured_threads = default_threads;
+      auto status = ReadInt64FromEnvVar("ITEX_ONEDNN_THREADPOOL_SIZE",
+                                        default_threads, &configured_threads);
+      if (!status.ok()) {
+        ITEX_LOG(WARNING)
+            << "ITEX_ONEDNN_THREADPOOL_SIZE parse failed: " << status
+            << ". Falling back to default threadpool size "
+            << default_threads;
+        return default_threads;
+      }
+
+      const int clamped_threads =
+          std::max<int64_t>(1, std::min<int64_t>(max_threads,
+                                                 configured_threads));
+      if (configured_threads != clamped_threads) {
+        ITEX_LOG(WARNING)
+            << "ITEX_ONEDNN_THREADPOOL_SIZE=" << configured_threads
+            << " is out of range; clamping to " << clamped_threads
+            << " within [1, " << max_threads << "]";
+      } else if (configured_threads != default_threads) {
+        ITEX_LOG(INFO) << "Using ITEX_ONEDNN_THREADPOOL_SIZE="
+                       << clamped_threads
+                       << " for the ITEX CPU Eigen/oneDNN threadpool";
+      }
+      return clamped_threads;
+    }();
+    return num_threads;
+  }
+
+  static const Eigen::ThreadPoolDevice& eigen_cpu_device_singleton() {
+    static Eigen::ThreadPool threadpool(eigen_cpu_threadpool_size_singleton());
+    static Eigen::ThreadPoolDevice threadpool_device(
+        &threadpool,
+        (eigen_cpu_threadpool_size_singleton() +
+         port::NumHyperthreadsPerCore() - 1) /
+            port::NumHyperthreadsPerCore());
+    return threadpool_device;
+  }
+
+  const Eigen::ThreadPoolDevice& eigen_cpu_device() const {
+    // TODO(itex): CPU should get thread pool device from local device:
+    // *device()->eigen_cpu_device();
+    // This helps to identity NUMA affinity.
+    return eigen_cpu_device_singleton();
+  }
 
 #ifndef INTEL_CPU_ONLY
   const Eigen::GpuDevice& eigen_gpu_device() const {
