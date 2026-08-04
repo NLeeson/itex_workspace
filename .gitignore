@@ -24,3 +24,4 @@ WHL*/
 .itex_configure.bazelrc
 .bazelrc.user
 _AGENTS.md
+examples/
