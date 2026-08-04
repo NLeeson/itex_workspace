@@ -68,8 +68,8 @@ class MHAOp : public OpKernel {
 #define CALL_FMHA_FUNC(T, qSplitSize, kvSplitSize)                             \
   FmhaFunctor<T, qSplitSize, kvSplitSize>()(                                   \
       context, query, key, value, batch_size, q_seq_len, num_heads, head_size, \
-      k_seq_len, use_mask, use_causal, use_dropout, &atten_mask,              \
-      &dropout_mask, dropout_prob, output)
+      k_seq_len, use_mask, use_causal, use_dropout, atten_mask, dropout_mask,  \
+      dropout_prob, output)
 
     if (q_seq_len >= 768) {
       CALL_FMHA_FUNC(T, 256, 512);

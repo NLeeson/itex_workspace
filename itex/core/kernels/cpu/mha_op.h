@@ -71,8 +71,8 @@ class FmhaFunctor {
                   const Tensor& key, const Tensor& value,
                   int64_t batch_size, int64_t q_seq_len, int64_t num_heads,
                   int64_t head_size, int64_t k_seq_len, bool use_mask,
-                  bool use_causal, bool use_dropout, const Tensor* atten_mask,
-                  const Tensor* dropout_mask, float dropout_prob,
+                  bool use_causal, bool use_dropout, const Tensor& atten_mask,
+                  const Tensor& dropout_mask, float dropout_prob,
                   Tensor* output) {
     int64_t q_stride_b = num_heads * q_seq_len * head_size;
     int64_t q_stride_h = q_seq_len * head_size;
