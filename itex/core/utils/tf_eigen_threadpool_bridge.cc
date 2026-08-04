@@ -1,5 +1,12 @@
 #ifndef ITEX_BUILD_JAX
 
+// TensorFlow compiles DeviceBase's Eigen CPU device support with this macro
+// enabled. It must be defined before including TensorFlow/Eigen headers so
+// Eigen::ThreadPoolDevice is fully defined rather than only forward-declared.
+#ifndef EIGEN_USE_THREADS
+#define EIGEN_USE_THREADS
+#endif
+
 #include "itex/core/utils/tf_eigen_threadpool_bridge.h"
 
 #include "tensorflow/core/framework/op_kernel.h"
