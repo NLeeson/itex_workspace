@@ -217,12 +217,11 @@ inline dnnl::engine& GetCPUDnnlEngine() {
 }
 
 template <>
-inline dnnl::engine& CreateDnnlEngine<CPUDevice>(const OpKernelContext& ctx) {
-  // Right now ITEX doesn't own proper TF CPU device and NUMA info is
-  // unavailable, so simply consider ITEX only have 1 CPU device.
-  // TODO(itex): Check NUMA after integrating new CPU device.
-  ITEX_CHECK(&(ctx.eigen_cpu_device()) == &(ctx.eigen_cpu_device_singleton()))
-      << "Global oneDNN CPU engine mismatched with current context";
+inline dnnl::engine& CreateDnnlEngine<CPUDevice>(
+    const OpKernelContext& ctx) {
+  ITEX_CHECK(ctx.eigen_cpu_device().getPool() != nullptr)
+      << "TensorFlow Eigen CPU threadpool is unavailable";
+
   return GetCPUDnnlEngine();
 }
 

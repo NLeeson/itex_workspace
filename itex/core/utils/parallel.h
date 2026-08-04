@@ -19,29 +19,20 @@ limitations under the License.
 namespace itex {
 
 // Returns the maximum number of threads that may be used in a parallel region
-inline int GetNumThreads() {
-  const Eigen::ThreadPoolDevice& device =
-      OpKernelContext::eigen_cpu_device_singleton();
-  return device.numThreadsInPool();
+inline int GetNumThreads(const OpKernelContext* ctx) {
+  return ctx->eigen_cpu_device().numThreadsInPool();
 }
 
 // Returns the current thread number (starting from 0)
 // in the current parallel region, or 0 in the sequential region.
-// NOTE: if Eigen thread pool is used, the thread num can be -1 (when task
-// amount is less than the num threads, one task can be executed in the main
-// thread, which returns -1 as thread id).
-inline int GetThreadNum() {
-  const Eigen::ThreadPoolDevice& device =
-      OpKernelContext::eigen_cpu_device_singleton();
-  return device.currentThreadId();
+inline int GetThreadNum(const OpKernelContext* ctx) {
+  return ctx->eigen_cpu_device().currentThreadId();
 }
 
 template <typename F>
-inline void ParallelFor(int64_t n, const Eigen::TensorOpCost& cost,
+inline void ParallelFor(const OpKernelContext* ctx, int64_t n, const Eigen::TensorOpCost& cost,
                         const F& f) {
-  const Eigen::ThreadPoolDevice& device =
-      OpKernelContext::eigen_cpu_device_singleton();
-  device.parallelFor(n, cost, f);
+  ctx->eigen_cpu_device().parallelFor(n, cost, f);
 }
 }  // namespace itex
 

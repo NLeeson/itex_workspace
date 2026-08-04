@@ -434,8 +434,7 @@ class LayerNormFusionDistilBase : public Fusion {
     Tensor raw_tensor = Tensor(node_type, node_val.tensor_shape());
     raw_tensor.FromProto(node_val);
 
-    const Eigen::ThreadPoolDevice d =
-        OpKernelContext::eigen_cpu_device_singleton();
+    const Eigen::DefaultDevice d;
 
     Tensor cast_node_t = Tensor(DT_FLOAT, node_val.tensor_shape());
 

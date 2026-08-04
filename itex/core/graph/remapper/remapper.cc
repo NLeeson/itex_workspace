@@ -6511,8 +6511,7 @@ Status AddConstWithCastNode(RemapperContext* ctx, const ConstWithCast& matched,
   Tensor value;
   ITEX_CHECK_OK(GetTensorFromConstant(&constant, &value));
 
-  const Eigen::ThreadPoolDevice d =
-      OpKernelContext::eigen_cpu_device_singleton();
+  const Eigen::DefaultDevice d;
   Tensor cast_value = Tensor(dst_dtype, value.shape());
   if (dst_dtype == DT_BFLOAT16) {
     cast_value.flat<Eigen::bfloat16>().device(d) =
