@@ -35,9 +35,27 @@ limitations under the License.
 #include "itex/core/utils/traceme_encode.h"
 #include "protos/node_def.pb.h"
 #include "tensorflow/c/tf_tensor.h"
-#include "tensorflow/core/framework/op_kernel.h"
+//#include "tensorflow/core/framework/op_kernel.h"
+
+
+extern "C" const void* ITEX_GetTensorFlowEigenCpuDevice(
+    const void* opaque_context);
 
 namespace itex {
+
+const Eigen::ThreadPoolDevice&
+OpKernelContext::eigen_cpu_device() const {
+  ITEX_CHECK(ctx_ != nullptr);
+
+  const void* raw_device =
+      ::ITEX_GetTensorFlowEigenCpuDevice(ctx_);
+
+  ITEX_CHECK(raw_device != nullptr)
+      << "TensorFlow Eigen CPU device is unavailable";
+
+  return *static_cast<const Eigen::ThreadPoolDevice*>(raw_device);
+}
+
 
 /* static */ absl::Mutex OpTypeFactory::op_type_factory_mutex_(
     absl::kConstInit);
