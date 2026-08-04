@@ -109,11 +109,7 @@ struct MklDnnThreadPool : public threadpool_iface {
 
     // If use_caller_thread, schedule njobs-1 jobs to thread pool and run last
     // job directly.
-    const bool use_caller_thread =
-        nthr ==
-        port::NumSchedulableCPUs();  // TODO(ITEX):
-                                     // TF_ONEDNN_THREADPOOL_USE_CALLER_THREAD
-                                     // default is false
+    const bool use_caller_thread = true;
     const int njobs_to_schedule = use_caller_thread ? njobs - 1 : njobs;
     BlockingCounter pending_jobs(njobs_to_schedule);
     for (int i = 0; i < njobs_to_schedule; i++) {

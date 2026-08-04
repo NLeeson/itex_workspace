@@ -95,7 +95,7 @@ def cpu_copts():
                 "-xHost",
             ],
             "//conditions:default": [],
-        }) + ["-qopenmp"]
+        })
     )
 
 def _copt_transition_impl(settings, attr):
