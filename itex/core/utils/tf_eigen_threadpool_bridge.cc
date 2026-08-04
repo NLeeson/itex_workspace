@@ -6,12 +6,9 @@
 
 namespace {
 
-::tensorflow::OpKernelContext* GetTensorFlowContext(void* opaque_context) {
-  return reinterpret_cast<::tensorflow::OpKernelContext*>(opaque_context);
-}
-
 Eigen::ThreadPoolInterface* GetTensorFlowThreadPool(void* opaque_context) {
-  auto* tf_context = GetTensorFlowContext(opaque_context);
+  auto* tf_context =
+      reinterpret_cast<::tensorflow::OpKernelContext*>(opaque_context);
   if (tf_context == nullptr) {
     return nullptr;
   }
@@ -56,20 +53,6 @@ extern "C" void ITEX_TensorFlowThreadPoolScheduleWithHint(
 
   threadpool->ScheduleWithHint(
       [task, argument]() { task(argument); }, start, end);
-}
-
-// Compatibility for OpKernelContext::eigen_cpu_device(). New oneDNN scheduling
-// uses the opaque functions above so TensorFlow's Eigen types do not enter the
-// normal ITEX translation units.
-extern "C" const void* ITEX_GetTensorFlowEigenCpuDevice(
-    const void* opaque_context) {
-  auto* tf_context = GetTensorFlowContext(
-      const_cast<void*>(opaque_context));
-  if (tf_context == nullptr || tf_context->device() == nullptr) {
-    return nullptr;
-  }
-  return static_cast<const void*>(
-      tf_context->device()->eigen_cpu_device());
 }
 
 #endif  // ITEX_BUILD_JAX
