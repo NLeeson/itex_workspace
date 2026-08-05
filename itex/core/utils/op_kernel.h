@@ -48,7 +48,9 @@ limitations under the License.
 #endif  // USING_NEXTPLUGGABLE_DEVICE
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/kernels_experimental.h"
-#ifndef INTEL_CPU_ONLY
+#ifdef INTEL_CPU_ONLY
+#include "itex/core/utils/tf_eigen_threadpool_device.h"
+#else
 #include "itex/core/devices/gpu/eigen_stream_device.h"
 #include "itex/core/devices/gpu/gpu_device_plugin.h"
 #endif  // INTEL_CPU_ONLY
@@ -378,7 +380,7 @@ class OpKernelContext {
       } else if (configured_threads != default_threads) {
         ITEX_LOG(INFO) << "Using ITEX_ONEDNN_THREADPOOL_SIZE="
                        << clamped_threads
-                       << " for the ITEX CPU Eigen/oneDNN threadpool";
+                       << " for the legacy ITEX CPU Eigen helper threadpool";
       }
       return clamped_threads;
     }();
@@ -392,14 +394,42 @@ class OpKernelContext {
         (eigen_cpu_threadpool_size_singleton() +
          port::NumHyperthreadsPerCore() - 1) /
             port::NumHyperthreadsPerCore());
+    static const bool logged = []() {
+      bool debug_wiring = false;
+      auto status =
+          ReadBoolFromEnvVar("ITEX_DEBUG_WIRING", false, &debug_wiring);
+      if (!status.ok()) {
+        ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
+      } else if (debug_wiring) {
+        const int pool_threads = eigen_cpu_threadpool_size_singleton();
+        const int device_threads =
+            (pool_threads + port::NumHyperthreadsPerCore() - 1) /
+            port::NumHyperthreadsPerCore();
+        ITEX_LOG(INFO)
+            << "ITEX_DEBUG_WIRING component=itex_eigen_threadpool "
+               "event=legacy_singleton_created"
+            << " pool=" << static_cast<void*>(&threadpool)
+            << " eigen_device=" << static_cast<void*>(&threadpool_device)
+            << " ownership=itex"
+            << " pool_threads=" << pool_threads
+            << " device_threads=" << device_threads
+            << " creates_workers=1"
+            << " consumer=legacy_fallback";
+      }
+      return true;
+    }();
+    (void)logged;
     return threadpool_device;
   }
 
   const Eigen::ThreadPoolDevice& eigen_cpu_device() const {
-    // TODO(itex): CPU should get thread pool device from local device:
-    // *device()->eigen_cpu_device();
-    // This helps to identity NUMA affinity.
+#ifdef INTEL_CPU_ONLY
+    return GetTensorFlowEigenCpuDevice(ctx_);
+#else
+    // Non-CPU build paths retain the legacy fallback. CPU plugin kernels use
+    // TensorFlow's borrowed intra-op pool through GetTensorFlowEigenCpuDevice.
     return eigen_cpu_device_singleton();
+#endif
   }
 
 #ifndef INTEL_CPU_ONLY
@@ -591,7 +621,7 @@ class OpKernelConstruction {
     return input_memory_types_;
   }
 
-  // For inspecting the outputs expected from this operation.
+  // For inspecting the outputs expected by this operation.
   const MemoryTypeSlice& output_memory_types() const {
     return output_memory_types_;
   }
@@ -640,7 +670,7 @@ class OpKernelConstruction {
   const char* OpName() const;
 
   // Unrecommended functions: these are functions that have some
-  // current uses but are not recommended for use, and may go away at
+  // current uses but are not recommended to use, and may go away at
   // some future major version release.
 
   // May be used, e.g., to get GPU handles, etc.
@@ -975,7 +1005,7 @@ class OpTypeFactory {
          SnapshotOp<GPUDevice, TYPE>)
 */
 // But should pay attention that, we will use arguments except the first
-// as an global key. If you have same key for double registion, the letter
+// as an global key. If you have same key with double registion, the letter
 // will overrite the previous one. One solution is you can define an class
 // with the Device argument.
 #define REGISTER_KERNEL_BUILDER(kernel_builder, ...) \
