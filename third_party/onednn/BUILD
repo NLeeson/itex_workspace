@@ -43,6 +43,17 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# Public request flag retained for compatibility with --config=graph-compiler
+# and direct --define use. The pinned oneDNN revision no longer ships this
+# backend, so the request selects an explicit diagnostic target below.
+config_setting(
+    name = "graph_compiler_requested",
+    define_values = {
+        "build_with_graph_compiler": "true",
+    },
+    visibility = ["//visibility:public"],
+)
+
 selects.config_setting_group(
     name = "cc_build_with_threadpool",
     match_all = [
@@ -66,6 +77,12 @@ bzl_library(
 )
 
 cc_library(
+    name = "graph_compiler_unavailable",
+    srcs = ["graph_compiler_unavailable.cc"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "intel_binary_blob",
     visibility = ["//visibility:public"],
     deps = select({
@@ -75,6 +92,9 @@ cc_library(
         "//conditions:default": [],
     }) + select({
         ":build_with_tbb": ["@oneTBB//:tbb"],
+        "//conditions:default": [],
+    }) + select({
+        ":graph_compiler_requested": [":graph_compiler_unavailable"],
         "//conditions:default": [],
     }),
 )
@@ -163,9 +183,13 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
+# Internal availability gate used by legacy external oneDNN BUILD files. It is
+# deliberately distinct from the public request flag so a user request cannot
+# activate source paths removed from oneDNN after v3.8.
 config_setting(
     name = "build_with_graph_compiler",
     define_values = {
-        "build_with_graph_compiler": "true",
+        "itex_internal_graph_compiler_available": "true",
     },
+    visibility = ["//visibility:public"],
 )
