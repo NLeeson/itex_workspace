@@ -13,20 +13,3 @@ index 8b4a193b92..2f1e4ac77e 100644
  const profiling_data_kind_t time_per_kernel
          = (profiling_data_kind_t)(internal_only_start + 2);
  } // namespace profiling_data_kind
-
-diff --git a/src/graph/interface/backend.cpp b/src/graph/interface/backend.cpp
-index 7c5f2c9a82..65c5bb7e89 100644
---- a/src/graph/interface/backend.cpp
-+++ b/src/graph/interface/backend.cpp
-@@ -52,7 +52,10 @@ void backend_registry_t::invoke_backend_registration() {
-     std::call_once(register_flag_, []() {
-         register_dnnl_backend();
-         register_fake_backend();
--#ifdef DNNL_ENABLE_COMPILER_BACKEND
-+// The oneDNN revision pinned by ITEX does not contain the graph-compiler
-+// backend sources. Do not trust a leaked global define to enable a backend
-+// that this external repository cannot provide.
-+#if defined(DNNL_ENABLE_COMPILER_BACKEND) && defined(ITEX_DNNL_COMPILER_BACKEND_AVAILABLE)
-         register_compiler_backend();
- #endif
-     });
