@@ -57,7 +57,8 @@ build:xpu --repo_env TF_NEED_MKL=1
 # This config option is used for LLGA (OneDnnGraph) debugging
 build:llga-debug --define=build_with_llga_debug=true
 
-# This config option is used for LLGA (OneDnnGraph) graph compiler backend, default enabled on cpu
+# Compatibility switch retained to emit an explicit unsupported-feature error.
+# The pinned oneDNN v3.11.3 no longer contains the Graph Compiler backend.
 build:graph-compiler --define=build_with_graph_compiler=true
 
 build --define=use_fast_cpp_protos=true
