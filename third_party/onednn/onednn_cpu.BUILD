@@ -22,6 +22,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
     "#cmakedefine DNNL_EXPERIMENTAL_UKERNEL": "#undef DNNL_EXPERIMENTAL_UKERNEL",
+    "#cmakedefine01 DNNL_EXPERIMENTAL_GROUPED_MEMORY": "#define DNNL_EXPERIMENTAL_GROUPED_MEMORY 0",
     "#cmakedefine DNNL_EXPERIMENTAL_SPARSE": "#undef DNNL_EXPERIMENTAL_SPARSE",
     "#cmakedefine DNNL_ENABLE_CONCURRENT_EXEC": "#define DNNL_ENABLE_CONCURRENT_EXEC",
 
@@ -38,6 +39,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_CONVOLUTION": "#define BUILD_CONVOLUTION 0",
     "#cmakedefine01 BUILD_DECONVOLUTION": "#define BUILD_DECONVOLUTION 0",
     "#cmakedefine01 BUILD_ELTWISE": "#define BUILD_ELTWISE 0",
+    "#cmakedefine01 BUILD_GATED_MLP": "#define BUILD_GATED_MLP 0",
     "#cmakedefine01 BUILD_INNER_PRODUCT": "#define BUILD_INNER_PRODUCT 0",
     "#cmakedefine01 BUILD_LRN": "#define BUILD_LRN 0",
     "#cmakedefine01 BUILD_MATMUL": "#define BUILD_MATMUL 0",
@@ -62,6 +64,7 @@ _DNNL_CPU_COMMON = {
     "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 1",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
     "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
+    "#cmakedefine01 BUILD_XE3P": "#define BUILD_XE3P 0",
     "#cmakedefine01 BUILD_XEHPG": "#define BUILD_XEHPG 0",
     "#cmakedefine01 BUILD_XEHPC": "#define BUILD_XEHPC 0",
     "#cmakedefine01 BUILD_XEHP": "#define BUILD_XEHP 0",
@@ -125,10 +128,7 @@ gen_onednn_config(
     substitutions = select({
         "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
         "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
-        #"@intel_extension_for_tensorflow//third_party/onednn:build_with_onednn_graph": _OMP_WITH_ONEDNN_GRAPH_LIST,
-        # Hard switch to threadpool runtime for CPU oneDNN builds.
-        # "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
+        "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
     }),
 )
 
