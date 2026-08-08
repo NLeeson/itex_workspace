@@ -78,7 +78,7 @@ typedef enum {
 
 // The dimensions order that DNNL internally uses for 3D activations
 // [Batch, Channel, Depth, Height, Width] and
-// for 3D filters [Out_Channel, In_Channel, Depth, Height, Width].
+// for 3D filters [Out_Channel, In_Channel, Height, Width].
 typedef enum {
   Dim3d_N = 0,
   Dim3d_C = 1,
@@ -219,8 +219,12 @@ inline dnnl::engine& GetCPUDnnlEngine() {
 template <>
 inline dnnl::engine& CreateDnnlEngine<CPUDevice>(
     const OpKernelContext& ctx) {
+#if DNNL_CPU_RUNTIME == DNNL_RUNTIME_THREADPOOL
   ITEX_CHECK(ctx.eigen_cpu_device().getPool() != nullptr)
       << "TensorFlow Eigen CPU threadpool is unavailable";
+#else
+  (void)ctx;
+#endif
 
   return GetCPUDnnlEngine();
 }
@@ -236,14 +240,22 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
 #else
 #ifndef CC_BUILD
-  // The CPU Python wrapper loads the oneDNN CPU library built with the
-  // threadpool runtime, so create a threadpool interop stream for CPU kernels.
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
+#if DNNL_CPU_RUNTIME == DNNL_RUNTIME_THREADPOOL
+  // The CPU Python wrapper uses TensorFlow's Eigen pool only when oneDNN was
+  // built with the threadpool runtime.
   MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
   dnnl::stream tp_stream =
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
+#else
+  // OpenMP/SEQ CPU runtimes own their execution policy; no threadpool interop
+  // stream is attached to the TensorFlow context.
+  (void)ctx;
+  (void)num_thread;
+  return dnnl::stream(engine);
+#endif
 #else
 // CPU and C++ BUILD
 #ifdef CC_THREADPOOL_BUILD
@@ -294,8 +306,8 @@ inline dnnl::memory CreateDnnlMemory(const dnnl::memory::desc& md,
 
 // Map OneDnnTensorFormat to oneDNN format tag
 //
-// @input: OneDnnTensorFormat i.e. TensorFlow data format
-// @return: OneDNN's memory format tag corresponding to OneDnnTensorFormat.
+// @input: OneDNN data format
+// @return: OneDNN's memory format tag corresponding to OneDNN data format.
 //          Fails with an error if invalid data format.
 inline dnnl::memory::format_tag OneDnnTensorFormatToTag(
     OneDnnTensorFormat format) {
@@ -321,8 +333,8 @@ inline dnnl::memory::format_tag OneDnnTensorFormatToTag(
 /// `TensorFormat` is original TF tensor attr, it's always NCHW or NHWC no
 /// matter the rank is 4D or 5D.
 ///
-/// @input: TensorFlow data format, Boolean to indicate whether it's 2D format
-/// @return: OneDNN data format corresponding to TensorFlow data format;
+/// @input: TensorShape object in shape
+/// @return: Tensorflow data format corresponding to oneDNN data format;
 ///          Fails with an error if invalid data format.
 inline OneDnnTensorFormat TFDataFormatToOneDnnDataFormat(TensorFormat format,
                                                          bool is_2d = true) {
