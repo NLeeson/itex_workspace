@@ -155,6 +155,7 @@ filegroup(
             "third_party/**/*.c",
         ],
         exclude = [
+            "src/cpu/**",
             "src/cpu/aarch64/**",
             "src/cpu/ppc64/**",
             "src/cpu/rv64/**",
