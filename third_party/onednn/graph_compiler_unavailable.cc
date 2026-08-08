@@ -13,4 +13,4 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#error "ITEX oneDNN Graph Compiler backend is unavailable with pinned oneDNN 74d0475 (v3.11.3): upstream removed this backend in commit 396fdfc9. Remove --config=graph-compiler, or use a dedicated legacy oneDNN integration branch."
+#error "ITEX oneDNN Graph Compiler backend is unavailable with pinned oneDNN 0e2a5bfe (v3.13): upstream removed this backend in commit 396fdfc9. Remove --config=graph-compiler, or use a dedicated legacy oneDNN integration branch."
