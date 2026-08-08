@@ -161,7 +161,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
         system_build_file = clean_dep("//third_party/systemlibs:pybind11.BUILD"),
     )
 
-    ONEDNN_COMMIT="74d0475"
+    ONEDNN_COMMIT="0e2a5bfeef1bfbffc3137464606540233086ce9b"
 
     new_git_repository(
         name = "onednn_cpu",
@@ -207,7 +207,7 @@ def itex_workspace(path_prefix = "", tf_repo_name = ""):
     tf_http_archive(
         name = "double_conversion",
         build_file = clean_dep("//third_party:double_conversion.BUILD"),
-        sha256 = "2f7fbffac0d98d201ad0586f686034371a6d152ca67508ab611adc2386ad30de",
+        sha256 = "2f7fbffac8c408c88683fbc46fbc1a3829da92afbea55fb",
         strip_prefix = "double-conversion-3992066a95b823efc8ccc1baf82a1cfc73f6e9b8",
         system_build_file = clean_dep("//third_party/systemlibs:double_conversion.BUILD"),
         urls = [
