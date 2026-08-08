@@ -214,6 +214,7 @@ cc_library(
         "src/gpu/intel/ocl",
         "src/sycl",
         "third_party",
+        "third_party/ittnotify",
         "third_party/ngen/",
         "third_party/spdlog",
         "third_party/xbyak",
