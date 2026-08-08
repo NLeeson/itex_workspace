@@ -132,7 +132,7 @@ void InitGlobalSetting(const OptimizerConfigFlags& config) {
   if (requested_omp) {
     ITEX_LOG(WARNING)
         << "ITEX_OMP_THREADPOOL=1 is deprecated and ignored. "
-        << "Using oneDNN CPU THREADPOOL runtime.";
+        << "The oneDNN CPU runtime is selected at build time.";
   }
 
   // Initialize CPU allocator:
