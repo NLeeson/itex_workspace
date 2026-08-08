@@ -5,7 +5,7 @@ build --experimental_cc_implementation_deps
 # This config option is used for CPU backend.
 build:cpu --define=build_with_onednn=true
 build:cpu --define=build_with_onednn_graph=true
-build:cpu --define=build_with_threadpool=true
+# oneDNN CPU runtime is configured as OpenMP in third_party/onednn BUILD files.
 #build:cpu --define=build_with_tbb=true
 build:cpu --define=build_with_graph_compiler=false # set to false
 build:cpu -c opt
@@ -22,7 +22,7 @@ build:cpu --define=device=cpu
 build:gpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
 build:gpu --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
 build:gpu --define=build_with_onednn_graph=true
-build:gpu --define=build_with_threadpool=true
+# GPU oneDNN uses CPU_RUNTIME=NONE and GPU_RUNTIME=SYCL.
 #build:gpu --define=build_with_tbb=true
 build:gpu --define=device=gpu
 build:gpu --define=tensorflow_mkldnn_contraction_kernel=0
@@ -38,7 +38,7 @@ build:xpu --crosstool_top=@itex_local_config_sycl//crosstool_sycl:toolchain
 build:xpu --define=using_sycl=true --define=build_with_sycl=true --define=using_xetla=true --define=using_nextpluggable=true
 build:xpu --define=build_with_onednn=true
 build:xpu --define=build_with_onednn_graph=true
-build:xpu --define=build_with_threadpool=true
+# CPU oneDNN uses OMP; GPU oneDNN uses CPU_RUNTIME=NONE + GPU_RUNTIME=SYCL.
 #build:xpu --define=build_with_tbb=true
 build:xpu --define=device=gpu
 build:xpu --define=tensorflow_mkldnn_contraction_kernel=0
@@ -58,7 +58,7 @@ build:xpu --repo_env TF_NEED_MKL=1
 build:llga-debug --define=build_with_llga_debug=true
 
 # Compatibility switch retained to emit an explicit unsupported-feature error.
-# The pinned oneDNN v3.11.3 no longer contains the Graph Compiler backend.
+# The pinned oneDNN v3.13 no longer contains the Graph Compiler backend.
 build:graph-compiler --define=build_with_graph_compiler=true
 
 build --define=use_fast_cpp_protos=true
