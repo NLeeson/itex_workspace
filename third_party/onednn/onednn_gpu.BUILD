@@ -24,9 +24,9 @@ config_setting(
 
 # TODO(itex): try better bazel usage in configuring strings with different options
 _CMAKE_COMMON_LIST = {
-    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_THREADPOOL",
-    "#cmakedefine DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_${DNNL_CPU_THREADING_RUNTIME}": "#define DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_THREADPOOL",
-    "#cmakedefine DNNL_GPU_RUNTIME DNNL_RUNTIME_${DNNL_GPU_RUNTIME}": if_sycl_build_is_configured("#define DNNL_GPU_RUNTIME DNNL_RUNTIME_DPCPP", "#define DNNL_GPU_RUNTIME DNNL_RUNTIME_SYCL"),
+    "#cmakedefine DNNL_CPU_RUNTIME DNNL_RUNTIME_${DNNL_CPU_RUNTIME}": "#define DNNL_CPU_RUNTIME DNNL_RUNTIME_NONE",
+    "#cmakedefine DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_${DNNL_CPU_THREADING_RUNTIME}": "#define DNNL_CPU_THREADING_RUNTIME DNNL_RUNTIME_SEQ",
+    "#cmakedefine DNNL_GPU_RUNTIME DNNL_RUNTIME_${DNNL_GPU_RUNTIME}": "#define DNNL_GPU_RUNTIME DNNL_RUNTIME_SYCL",
     "#cmakedefine DNNL_GPU_VENDOR DNNL_VENDOR_${DNNL_GPU_VENDOR}": "#define DNNL_GPU_VENDOR DNNL_VENDOR_INTEL",
     "#cmakedefine DNNL_SYCL_DPCPP": if_sycl_build_is_configured("#define DNNL_SYCL_DPCPP", "/* #undef DNNL_SYCL_DPCPP */"),
     "#cmakedefine DNNL_SYCL_COMPUTECPP": if_sycl_build_is_configured("/*#undef DNNL_SYCL_COMPUTECPP*/", "#define DNNL_SYCL_COMPUTECPP"),
@@ -43,6 +43,7 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine DNNL_EXPERIMENTAL_LOGGING": "#undef DNNL_EXPERIMENTAL_LOGGING",
     "#cmakedefine DNNL_EXPERIMENTAL_PROFILING": "#undef DNNL_EXPERIMENTAL_PROFILING",
     "#cmakedefine DNNL_EXPERIMENTAL_UKERNEL": "#undef DNNL_EXPERIMENTAL_UKERNEL",
+    "#cmakedefine01 DNNL_EXPERIMENTAL_GROUPED_MEMORY": "#define DNNL_EXPERIMENTAL_GROUPED_MEMORY 0",
     "#cmakedefine DNNL_EXPERIMENTAL_SPARSE": "#undef DNNL_EXPERIMENTAL_SPARSE",
     "#cmakedefine DNNL_ENABLE_CONCURRENT_EXEC": "#define DNNL_ENABLE_CONCURRENT_EXEC",
 
@@ -57,6 +58,7 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine01 BUILD_CONVOLUTION": "#define BUILD_CONVOLUTION 0",
     "#cmakedefine01 BUILD_DECONVOLUTION": "#define BUILD_DECONVOLUTION 0",
     "#cmakedefine01 BUILD_ELTWISE": "#define BUILD_ELTWISE 0",
+    "#cmakedefine01 BUILD_GATED_MLP": "#define BUILD_GATED_MLP 0",
     "#cmakedefine01 BUILD_GROUP_NORMALIZATION": "#define BUILD_GROUP_NORMALIZATION 0",
     "#cmakedefine01 BUILD_INNER_PRODUCT": "#define BUILD_INNER_PRODUCT 0",
     "#cmakedefine01 BUILD_LAYER_NORMALIZATION": "#define BUILD_LAYER_NORMALIZATION 0",
@@ -83,6 +85,7 @@ _CMAKE_COMMON_LIST = {
     "#cmakedefine01 BUILD_XELP": "#define BUILD_XELP 1",
     "#cmakedefine01 BUILD_XE2": "#define BUILD_XE2 0",
     "#cmakedefine01 BUILD_XE3": "#define BUILD_XE3 0",
+    "#cmakedefine01 BUILD_XE3P": "#define BUILD_XE3P 0",
     "#cmakedefine01 BUILD_XEHPG": "#define BUILD_XEHPG 0",
     "#cmakedefine01 BUILD_XEHPC": "#define BUILD_XEHPC 0",
     "#cmakedefine01 BUILD_XEHP": "#define BUILD_XEHP 0",
