@@ -118,8 +118,10 @@ _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_THREADPOOL)
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
-# tbb + no llga build is not supported here, to simplify the logic here.
-# TODO(itex): try better bazel usage in configuring strings with different options
+# libonednn_cpu_so.so is the OpenMP (or TBB) oneDNN. THREADPOOL lives in
+# @onednn_cpu_eigen / libonednn_cpu_eigen_so.so. CC +
+# --define=build_with_threadpool=true still compiles this repo as THREADPOOL
+# because older CC targets linked @onednn_cpu directly.
 gen_onednn_config(
     name = "dnnl_config_h",
     defines = ["DNNL_ENABLE_CONCURRENT_EXEC"],

@@ -99,21 +99,28 @@ void* LoadCpuLibrary() {
     itex_freeze_backend(ITEX_BACKEND_CPU);
   }
   LogCpuWrapperWiring("load_start");
-  bool requested_omp =
-      ParseEnvBool(std::getenv("ITEX_OMP_THREADPOOL"), false, "ITEX_OMP_THREADPOOL");
-  if (requested_omp) {
+  bool enable_omp =
+      ParseEnvBool(std::getenv("ITEX_OMP_THREADPOOL"), true, "ITEX_OMP_THREADPOOL");
+#ifdef ITEX_CPU_THREADPOOL_BUILD
+  if (enable_omp) {
     ITEX_LOG(WARNING)
-        << "ITEX_OMP_THREADPOOL=1 is deprecated and ignored. "
-        << "Using oneDNN CPU THREADPOOL runtime.";
+        << "ITEX_OMP_THREADPOOL=1 is ignored because this ITEX build was "
+        << "configured with --define=build_with_threadpool=true.";
   }
-
-  onednn_handle = dlopen("libonednn_cpu_eigen_so.so", RTLD_NOW | RTLD_GLOBAL);
+  enable_omp = false;
+#endif
+  const char* onednn_lib =
+      enable_omp ? "libonednn_cpu_so.so" : "libonednn_cpu_eigen_so.so";
+  onednn_handle = dlopen(onednn_lib, RTLD_NOW | RTLD_GLOBAL);
   if (!onednn_handle) {
     ITEX_LOG(FATAL) << dlerror();
   }
+  ITEX_LOG(INFO) << "oneDNN CPU runtime: " << (enable_omp ? "OMP" : "THREADPOOL")
+                 << " (" << onednn_lib << ")";
   LogCpuWrapperWiring("onednn_loaded",
-                      "library=libonednn_cpu_eigen_so.so library_path=" +
-                          LoadedLibraryPath(onednn_handle));
+                      std::string("library=") + onednn_lib +
+                          " runtime=" + (enable_omp ? "OMP" : "THREADPOOL") +
+                          " library_path=" + LoadedLibraryPath(onednn_handle));
 
   if (itex::port::CPUIDAVX512()) {
     handle = dlopen("libitex_cpu_internal_avx512.so", RTLD_NOW | RTLD_LOCAL);

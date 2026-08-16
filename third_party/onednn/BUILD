@@ -62,6 +62,18 @@ selects.config_setting_group(
     ],
 )
 
+# Any CPU backend transition (AVX2/AVX512/CC) built with
+# --define=build_with_threadpool=true. Used to compile ITEX kernels against
+# @onednn_cpu_eigen THREADPOOL headers.
+selects.config_setting_group(
+    name = "cpu_build_with_threadpool",
+    match_all = [
+        ":build_with_threadpool",
+        "//itex:cpu_build",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 selects.config_setting_group(
     name = "cpu_build_with_tbb",
     match_all = [

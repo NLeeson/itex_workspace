@@ -118,18 +118,15 @@ _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_CPU_COMMON)
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_RUNTIME_THREADPOOL)
 _THREADPOOL_WITH_ONEDNN_GRAPH_LIST.update(_DNNL_ONEDNN_GRAPH)
 
-# tbb + no llga build is not supported here, to simplify the logic here.
-# TODO(itex): try better bazel usage in configuring strings with different options
+# libonednn_cpu_eigen_so.so is the THREADPOOL oneDNN. Do not inherit the
+# OMP/TBB select used by @onednn_cpu; a shared select made both .so files
+# OpenMP in the default Python build.
 gen_onednn_config(
     name = "dnnl_config_h",
     defines = ["DNNL_ENABLE_CONCURRENT_EXEC"],
     src = "include/oneapi/dnnl/dnnl_config.h.in",
     out = "include/oneapi/dnnl/dnnl_config.h",
-    substitutions = select({
-        "@intel_extension_for_tensorflow//third_party/onednn:build_with_tbb": _TBB_WITH_ONEDNN_GRAPH_LIST,
-        "@intel_extension_for_tensorflow//third_party/onednn:cc_build_with_threadpool": _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
-        "//conditions:default": _OMP_WITH_ONEDNN_GRAPH_LIST,
-    }),
+    substitutions = _THREADPOOL_WITH_ONEDNN_GRAPH_LIST,
 )
 
 # Create the file dnnl_version.h with DNNL version numbers.

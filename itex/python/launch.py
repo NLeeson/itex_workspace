@@ -633,7 +633,7 @@ def add_itex_params(parser):
                      help="Enable ITEX layout opt")
   group.add_argument("--enable_op_parallelism", action='store_true', \
                       default=False,
-                     help="If true, set ITEX_OMP_THREADPOOL=0 (threadpool runtime default).")
+                     help="If true, set ITEX_OMP_THREADPOOL=0 to use oneDNN Eigen THREADPOOL.")
 
 
 def add_memory_allocator_params(parser):

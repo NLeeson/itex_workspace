@@ -16,6 +16,8 @@ limitations under the License.
 #ifndef ITEX_CORE_UTILS_ONEDNN_ONEDNN_UTIL_H_
 #define ITEX_CORE_UTILS_ONEDNN_ONEDNN_UTIL_H_
 
+#include <dlfcn.h>
+
 #include <algorithm>
 #include <map>
 #include <mutex>
@@ -29,6 +31,7 @@ limitations under the License.
 #include "dnnl_sycl.hpp"  // NOLINT(build/include_subdir)
 #endif                    // INTEL_CPU_ONLY
 
+#include "itex/core/utils/env_var.h"
 #include "itex/core/utils/logging.h"
 #include "itex/core/utils/onednn/mkl_threadpool.h"
 #include "itex/core/utils/op_kernel.h"
@@ -40,6 +43,12 @@ limitations under the License.
 #include "itex/core/wrapper/itex_cpu_wrapper.h"
 
 namespace itex {
+static std::once_flag read_env_once_flag;
+static bool enable_omp = true;
+typedef dnnl_status_t (*dnnl_stream_create_internal)(dnnl_stream_t*,
+                                                     dnnl_engine_t, void*);
+static dnnl_stream_create_internal make_stream;
+
 using GPUDevice = Eigen::GpuDevice;
 using CPUDevice = Eigen::ThreadPoolDevice;
 
@@ -243,18 +252,43 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
 #if DNNL_CPU_RUNTIME == DNNL_RUNTIME_THREADPOOL
-  // The CPU Python wrapper uses TensorFlow's Eigen pool only when oneDNN was
-  // built with the threadpool runtime.
+  // Python build compiled against THREADPOOL headers
+  // (--define=build_with_threadpool=true).
+  if (num_thread == 1) return dnnl::stream(engine);
   MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
   dnnl::stream tp_stream =
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
 #else
-  // OpenMP/SEQ CPU runtimes own their execution policy; no threadpool interop
-  // stream is attached to the TensorFlow context.
-  (void)ctx;
-  (void)num_thread;
-  return dnnl::stream(engine);
+  // Default Python build: compiled against OMP headers. ITEX_OMP_THREADPOOL
+  // selects which oneDNN .so was dlopened; THREADPOOL uses the C interop
+  // symbol so ITEX does not need THREADPOOL headers at compile time.
+  std::call_once(read_env_once_flag, []() {
+    ITEX_CHECK_OK(
+        itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
+#ifdef ITEX_CPU_THREADPOOL_BUILD
+    enable_omp = false;
+#endif
+    if (!enable_omp) {
+      make_stream = reinterpret_cast<dnnl_stream_create_internal>(
+          dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));
+      if (make_stream == nullptr) {
+        ITEX_LOG(FATAL)
+            << "ITEX_OMP_THREADPOOL=0 requires libonednn_cpu_eigen_so.so "
+            << "built with the oneDNN THREADPOOL runtime: " << dlerror();
+      }
+    }
+  });
+  if (enable_omp) {
+    return dnnl::stream(engine);
+  }
+  if (num_thread == 1) return dnnl::stream(engine);
+  MklDnnThreadPool* eigen_tp = GetMklDnnThreadPool(&ctx, num_thread);
+  dnnl_stream_t c_stream;
+  dnnl_status_t status = make_stream(&c_stream, engine.get(), eigen_tp);
+  ITEX_CHECK(status == dnnl_success)
+      << "dnnl_threadpool_interop_stream_create failed";
+  return dnnl::stream(c_stream);
 #endif
 #else
 // CPU and C++ BUILD

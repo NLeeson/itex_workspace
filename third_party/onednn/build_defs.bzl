@@ -41,6 +41,7 @@ def onednn_deps():
     """
     return select({
         "@intel_extension_for_tensorflow//itex:gpu_build": ["@onednn_gpu//:onednn_gpu"],
+        "@intel_extension_for_tensorflow//third_party/onednn:cpu_build_with_threadpool": ["@onednn_cpu_eigen//:onednn_cpu"],
         "@intel_extension_for_tensorflow//itex:cpu_build": ["@onednn_cpu//:onednn_cpu"],
         "//conditions:default": ["@onednn_cpu//:onednn_cpu"],
     })
@@ -76,6 +77,7 @@ def onednn_graph_deps():
     """
     return select({
         "@intel_extension_for_tensorflow//itex:gpu_build": ["@onednn_gpu//:onednn_graph_gpu"],
+        "@intel_extension_for_tensorflow//third_party/onednn:cpu_build_with_threadpool": ["@onednn_cpu_eigen//:onednn_graph_cpu"],
         "@intel_extension_for_tensorflow//itex:cpu_build": ["@onednn_cpu//:onednn_graph_cpu"],
         "//conditions:default": ["@onednn_cpu//:onednn_graph_cpu"],
     })
