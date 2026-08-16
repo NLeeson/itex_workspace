@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "itex/core/kernels/common/layer_norm_op.h"
+#include "itex/core/kernels/gpu/layer_norm_op_gpu.h"
 
 #include "itex/core/devices/gpu/eigen_stream_device.h"
 #include "itex/core/devices/gpu/gpu_device_plugin.h"

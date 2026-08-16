@@ -771,6 +771,7 @@ itex_gpu_library(
     name = "layer_norm_op",
     srcs = ["layer_norm_op.cc"],
     hdrs = [
+        "layer_norm_op_gpu.h",
         "//itex/core/kernels/common:layer_norm_hdrs",
     ],
     copts = tf_copts(),
