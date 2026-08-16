@@ -186,7 +186,7 @@ For CPU support
 $ bazel build -c opt --config=cpu //itex:libitex_cpu_cc.so
 ```
 
-Threadpool runtime is required for CPU execution. Ensure `--define=build_with_threadpool=true` is present. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
+Default C++ CPU builds use the OpenMP oneDNN runtime. To build a THREADPOOL backend that attaches oneDNN to TensorFlow's Eigen pool:
 
 ```bash
 $ bazel build -c opt --config=cpu --define=build_with_threadpool=true //itex:libitex_cpu_cc.so

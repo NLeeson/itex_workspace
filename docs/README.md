@@ -112,7 +112,7 @@
 
 * CPU Thread Pool
 
-  Intel® Extension for TensorFlow\* uses oneDNN THREADPOOL runtime by default for CPU execution paths. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
+  Intel® Extension for TensorFlow\* default Python CPU packages use oneDNN OpenMP (`ITEX_OMP_THREADPOOL=1`). Set `ITEX_OMP_THREADPOOL=0` to load the Eigen THREADPOOL oneDNN, or build with `--define=build_with_threadpool=true` for a THREADPOOL-only backend.
 
 * Operator optimization
 

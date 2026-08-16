@@ -1,13 +1,18 @@
 # CPU Threadpool Runtime in Intel® Extension for TensorFlow\* [Experimental]
 
-Intel® Extension for TensorFlow\* CPU uses oneDNN THREADPOOL runtime by default. This aligns CPU-side preprocessing and independent op scheduling with TensorFlow Eigen threadpool behavior while GPU model execution runs via SYCL/Level Zero. `ITEX_OMP_THREADPOOL=1` is deprecated and ignored.
+Default Python CPU packages compile ITEX against OpenMP oneDNN headers and ship both CPU oneDNN shared libraries. `ITEX_OMP_THREADPOOL` selects the library at load time:
 
-## Legacy OpenMP Thread Pool (Deprecated)
+- `ITEX_OMP_THREADPOOL=1` (default): `libonednn_cpu_so.so` (OpenMP).
+- `ITEX_OMP_THREADPOOL=0`: `libonednn_cpu_eigen_so.so` (oneDNN THREADPOOL + TensorFlow Eigen).
 
-OpenMP threadpool selection through `ITEX_OMP_THREADPOOL=1` is no longer active in the runtime path. Keep this section only for historical comparison notes.
+A THREADPOOL-only backend can also be compiled in with `--define=build_with_threadpool=true`. That build links ITEX kernels against THREADPOOL headers and always loads `libonednn_cpu_eigen_so.so`.
+
+## OpenMP Thread Pool
+
+Use OpenMP when you want oneDNN to own intra-op parallelism via `OMP_NUM_THREADS` / `KMP_*`. The graph initializer then sets `TF_NUM_INTEROP_THREADS` conservatively so OpenMP and TensorFlow inter-op threads do not oversubscribe the machine.
 
 ## Using Threadpool Runtime
-For workloads with large inter-op concurrency, threadpool runtime supplies non-blocking scheduling between independent operations and better dynamic load balancing. This is the default behavior; no extra environment variable is required.
+For workloads with large inter-op concurrency, set `ITEX_OMP_THREADPOOL=0` (or build with `--define=build_with_threadpool=true`). Threadpool runtime supplies non-blocking scheduling between independent operations and better dynamic load balancing.
 
 ## Example
 Here we show historical comparison examples for different threadpool settings on Intel® Xeon® Platinum 8480+ systems.

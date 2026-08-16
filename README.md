@@ -137,6 +137,58 @@ Sanity check instructions:
 python -c "import intel_extension_for_tensorflow as itex; print(itex.__version__)"
 ```
 
+## Building with oneDNN Threadpool (Alternative to OpenMP)
+
+By default, the CPU backend in Intel® Extension for TensorFlow* is configured with the OpenMP (OMP) threading runtime. ITEX also supports the **oneDNN Threadpool runtime**, which attaches oneDNN operations directly to TensorFlow's native Eigen threadpool.
+
+### Why Choose Threadpool?
+- **Avoids Thread Over-Subscription**: Eliminates CPU core contention and context-switching overhead caused by competing OpenMP and TensorFlow thread pools.
+- **Lower Latency for Multi-Tenant / Concurrent Inference**: Delivers superior performance for high inter-op concurrency and small batch workloads.
+- **Unified Thread Management**: Thread allocation is controlled directly via standard TensorFlow threading APIs rather than separate OpenMP environment variables.
+
+### Build Commands
+
+1. **Configure the Workspace**:
+   ```bash
+   ./configure
+   ```
+
+2. **Build C++ Shared Library with Threadpool**:
+   ```bash
+   bazel build -c opt --config=cpu --define=build_with_threadpool=true //itex:libitex_cpu_cc.so
+   ```
+
+3. **Build Python Pip Package with Threadpool**:
+   ```bash
+   bazel build -c opt --config=cpu --define=build_with_threadpool=true //itex/tools/pip_package:build_pip_package
+   ./bazel-bin/itex/tools/pip_package/build_pip_package WHL/
+   ```
+
+4. **Install the Generated Wheel**:
+   ```bash
+   pip install WHL/intel_extension_for_tensorflow*.whl
+   ```
+
+### Runtime Verification
+To verify that the Threadpool runtime is active:
+```bash
+ITEX_DEBUG_WIRING=1 python -c "import intel_extension_for_tensorflow as itex; import tensorflow as tf; tf.matmul(tf.ones([2,2]), tf.ones([2,2]))"
+```
+Look for log output:
+```text
+ITEX_DEBUG_WIRING component=onednn_threadpool event=adapter_created ...
+```
+
+### Performance Tuning
+Configure thread concurrency using TensorFlow's threading configuration:
+```python
+import tensorflow as tf
+
+# Set intra-op and inter-op threads (aligned with physical CPU cores)
+tf.config.threading.set_intra_op_parallelism_threads(16)
+tf.config.threading.set_inter_op_parallelism_threads(2)
+```
+
 ## Documentation
 
 Visit the [online document website](https://intel.github.io/intel-extension-for-tensorflow/latest/), and then get started with a tour of Intel® Extension for TensorFlow* [examples](examples/README.md).
