@@ -29,8 +29,14 @@ limitations under the License.
 #include "tensorflow/c/tf_status.h"
 
 static void* handle;
+static int loaded_cpu_onednn_is_openmp = 1;
 static void* LoadCpuLibrary() __attribute__((constructor));
 static void UnloadCpuLibrary() __attribute__((destructor));
+
+extern "C" __attribute__((visibility("default"))) int
+ITEX_CpuOnednnRuntimeIsOpenMP(void) {
+  return loaded_cpu_onednn_is_openmp;
+}
 
 namespace {
 
@@ -115,6 +121,7 @@ void* LoadCpuLibrary() {
   if (!onednn_handle) {
     ITEX_LOG(FATAL) << dlerror();
   }
+  loaded_cpu_onednn_is_openmp = enable_omp ? 1 : 0;
   ITEX_LOG(INFO) << "oneDNN CPU runtime: " << (enable_omp ? "OMP" : "THREADPOOL")
                  << " (" << onednn_lib << ")";
   LogCpuWrapperWiring("onednn_loaded",

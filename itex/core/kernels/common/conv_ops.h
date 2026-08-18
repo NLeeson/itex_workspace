@@ -764,11 +764,11 @@ class ConvOpBase : public OpKernel {
     }
 
     // Reallocate scratchpad memory.
-    OP_REQUIRES_OK(context,
-                   context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                          TensorShape({scratchpad_size_}),
-                                          scratchpad_tensor_.get()));
     if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+      OP_REQUIRES_OK(context,
+                     context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                            TensorShape({scratchpad_size_}),
+                                            scratchpad_tensor_.get()));
       scratchpad_mem_.set_data_handle(
           GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
     } else {

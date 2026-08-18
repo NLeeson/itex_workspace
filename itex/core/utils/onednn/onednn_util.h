@@ -40,6 +40,7 @@ limitations under the License.
 #include "itex/core/utils/strcat.h"
 #include "itex/core/utils/tensor_format.h"
 #include "itex/core/utils/tensor_shape.h"
+#include "itex/core/utils/cpu_onednn_runtime.h"
 #include "itex/core/wrapper/itex_cpu_wrapper.h"
 
 namespace itex {
@@ -260,15 +261,11 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
       dnnl::stream(dnnl::threadpool_interop::make_stream(engine, eigen_tp));
   return tp_stream;
 #else
-  // Default Python build: compiled against OMP headers. ITEX_OMP_THREADPOOL
-  // selects which oneDNN .so was dlopened; THREADPOOL uses the C interop
+  // Default Python build: compiled against OMP headers. The wrapper publishes
+  // which oneDNN .so was actually opened; THREADPOOL uses the C interop
   // symbol so ITEX does not need THREADPOOL headers at compile time.
   std::call_once(read_env_once_flag, []() {
-    ITEX_CHECK_OK(
-        itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-#ifdef ITEX_CPU_THREADPOOL_BUILD
-    enable_omp = false;
-#endif
+    enable_omp = LoadedCpuOnednnIsOpenMP();
     if (!enable_omp) {
       make_stream = reinterpret_cast<dnnl_stream_create_internal>(
           dlsym(onednn_handle, "dnnl_threadpool_interop_stream_create"));

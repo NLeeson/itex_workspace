@@ -90,14 +90,14 @@ bool HasVisibleGpuDevices(void* library_handle, int* device_count = nullptr) {
   if (library_handle == nullptr) return false;
   typedef int (*gpu_get_device_count_fn)(int*);
   auto get_device_count = reinterpret_cast<gpu_get_device_count_fn>(
-      dlsym(library_handle, "_Z22ITEX_GPUGetDeviceCountPi"));
+      dlsym(library_handle, "ITEX_GPUGetDeviceCount"));
   if (get_device_count == nullptr) {
     const char* error_msg = dlerror();
     LogGpuWrapperWiring("device_probe_missing",
                         std::string("library_path=") +
                             LoadedLibraryPath(library_handle) +
                             (error_msg ? " error=" + std::string(error_msg) : ""));
-    return true;
+    return false;
   }
   int count = 0;
   int status = get_device_count(&count);

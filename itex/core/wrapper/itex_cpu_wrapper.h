@@ -16,4 +16,14 @@ limitations under the License.
 #define ITEX_CORE_WRAPPER_ITEX_CPU_WRAPPER_H_
 
 static void* onednn_handle;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+// 1 if LoadCpuLibrary opened libonednn_cpu_so.so (OpenMP), else 0.
+int ITEX_CpuOnednnRuntimeIsOpenMP(void);
+#ifdef __cplusplus
+}
+#endif
+
 #endif  // ITEX_CORE_WRAPPER_ITEX_CPU_WRAPPER_H_

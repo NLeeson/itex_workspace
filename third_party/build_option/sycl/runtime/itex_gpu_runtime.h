@@ -214,7 +214,13 @@ inline bool IsMultipleStreamEnabled() {
 
 const char* ITEX_GPUGetErrorName(ITEX_GPUError_t error);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 ITEX_GPUError_t ITEX_GPUGetDeviceCount(int* count);
+#ifdef __cplusplus
+}
+#endif
 
 ITEX_GPUError_t ITEX_GPUGetDevice(ITEX_GPUDevice** device, int device_ordinal);
 

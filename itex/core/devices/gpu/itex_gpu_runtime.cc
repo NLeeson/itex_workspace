@@ -279,7 +279,8 @@ class StreamPool {
   }
 };
 
-ITEX_GPUError_t ITEX_GPUGetDeviceCount(int* count) {
+__attribute__((visibility("default"))) ITEX_GPUError_t ITEX_GPUGetDeviceCount(
+    int* count) {
   return DevicePool::getDeviceCount(count);
 }
 

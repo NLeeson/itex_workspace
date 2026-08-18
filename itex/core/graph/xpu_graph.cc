@@ -30,6 +30,7 @@ limitations under the License.
 #include "itex/core/graph/optimizer_config.h"
 #include "itex/core/graph/xpu_optimizer.h"
 #include "itex/core/utils/cpu_info.h"
+#include "itex/core/utils/cpu_onednn_runtime.h"
 #include "itex/core/utils/env_var.h"
 #include "itex/core/utils/hw_info.h"
 #include "itex/core/utils/logging.h"
@@ -128,7 +129,7 @@ void InitGlobalSetting(const OptimizerConfigFlags& config) {
 #endif
 
 #ifdef INTEL_CPU_ONLY
-  bool enable_omp = true;
+  const bool enable_omp = itex::LoadedCpuOnednnIsOpenMP();
   const int32_t cpu_num = itex::port::MaxParallelism();
 
   // OneDNN library executes ops in parallel using OMP threads.
@@ -150,11 +151,6 @@ void InitGlobalSetting(const OptimizerConfigFlags& config) {
   const int32_t itex_inter_num = std::max((cpu_num + omp_num - 1) / omp_num, 1);
 
   // Set inter_op_parallelism_threads if it's not initialized.
-  ITEX_CHECK_OK(
-      itex::ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp));
-#if defined(CC_THREADPOOL_BUILD) || defined(ITEX_CPU_THREADPOOL_BUILD)
-  enable_omp = false;
-#endif
   if (enable_omp)
     setenv("TF_NUM_INTEROP_THREADS", std::to_string(itex_inter_num).c_str(), 0);
 

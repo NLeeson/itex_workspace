@@ -19,6 +19,8 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
+#include "itex/core/utils/cpu_onednn_runtime.h"
+
 #include "google/protobuf/text_format.h"
 #include "itex/core/graph/utils/graph_properties.h"
 #include "itex/core/graph/utils/op_types.h"
@@ -218,6 +220,18 @@ std::vector<NativeFormatInfo>* GetCPUNativeFormatInfo() {
   return &rinfo;
 }
 
+// Shared Eigen table plus OpenMP extras, built once. Do not insert into
+// GetCPUEigenNativeFormatInfo()'s static vector.
+std::vector<NativeFormatInfo>* GetCPUOpenMpNativeFormatInfo() {
+  static std::vector<NativeFormatInfo> rinfo = [] {
+    std::vector<NativeFormatInfo> merged = *GetCPUEigenNativeFormatInfo();
+    const auto* extras = GetCPUNativeFormatInfo();
+    merged.insert(merged.end(), extras->begin(), extras->end());
+    return merged;
+  }();
+  return &rinfo;
+}
+
 std::vector<NativeFormatInfo>* GetGPUNativeFormatInfo() {
   static std::vector<NativeFormatInfo> rinfo{
 #ifndef USING_NEXTPLUGGABLE_DEVICE
@@ -342,7 +356,8 @@ const NativeFormatInfo* CheckForNodeNativeFormat(
   std::vector<NativeFormatInfo>* rinfo;
   if (absl::StrContains("CPU", opt_ctx->device_name)) {
     if (opt_ctx->enable_complete_opt) {
-      rinfo = GetCPUEigenNativeFormatInfo();
+      rinfo = itex::LoadedCpuOnednnIsOpenMP() ? GetCPUOpenMpNativeFormatInfo()
+                                             : GetCPUEigenNativeFormatInfo();
     } else {
       rinfo = GetCustomNativeFormatInfo();
     }

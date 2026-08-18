@@ -178,11 +178,11 @@ class OneDnnConvOp : public OpKernel {
       bias_mem_.set_data_handle(bias_data);
     }
 
-    OP_REQUIRES_OK(context,
-                   context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                          TensorShape({scratchpad_size_}),
-                                          scratchpad_tensor_.get()));
     if (HasDnnlScratchpad(fwd_pd_.scratchpad_desc())) {
+      OP_REQUIRES_OK(context,
+                     context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                            TensorShape({scratchpad_size_}),
+                                            scratchpad_tensor_.get()));
       scratchpad_mem_.set_data_handle(
           GetTensorBuffer<Tinput>(scratchpad_tensor_.get()));
     } else {
@@ -1431,11 +1431,11 @@ class OneDnnQuantizeV2WithQuantizedConv2DOp
       this->bias_mem_.set_data_handle(bias_data);
     }
 
-    OP_REQUIRES_OK(context,
-                   context->allocate_temp(DataTypeToEnum<Tinput>::v(),
-                                          TensorShape({this->scratchpad_size_}),
-                                          this->scratchpad_tensor_.get()));
     if (HasDnnlScratchpad(this->fwd_pd_.scratchpad_desc())) {
+      OP_REQUIRES_OK(context,
+                     context->allocate_temp(DataTypeToEnum<Tinput>::v(),
+                                            TensorShape({this->scratchpad_size_}),
+                                            this->scratchpad_tensor_.get()));
       this->scratchpad_mem_.set_data_handle(
           GetTensorBuffer<Tinput>(this->scratchpad_tensor_.get()));
     } else {
