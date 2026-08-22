@@ -16,7 +16,11 @@ limitations under the License.
 #ifndef ITEX_CORE_KERNELS_COMMON_MATMUL_OP_H_
 #define ITEX_CORE_KERNELS_COMMON_MATMUL_OP_H_
 
+#include <dlfcn.h>
+
 #include <algorithm>
+#include <cstdlib>
+#include <limits>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -61,6 +65,57 @@ inline int ExecuteNThreadedGemm(int64_t m, int64_t n, int64_t k, int bytes_in,
     return 1;
   else
     return -1;
+}
+
+inline Status SelectCpuMatMulImplementation(
+    dnnl::matmul::primitive_desc* matmul_pd,
+    bool prefer_gemm_by_default) {
+  const bool implementation_is_explicit =
+      std::getenv("ITEX_MATMUL_IMPL") != nullptr;
+  string requested_impl;
+  Status status =
+      ReadStringFromEnvVar("ITEX_MATMUL_IMPL",
+                           prefer_gemm_by_default ? "gemm" : "auto",
+                           &requested_impl);
+  if (!status.ok()) return status;
+  if (requested_impl.empty() || requested_impl == "auto") {
+    return Status::OK();
+  }
+
+  const string default_impl = matmul_pd->impl_info_str();
+  if (!implementation_is_explicit &&
+      default_impl.find("brg_matmul:avx2") == string::npos) {
+    return Status::OK();
+  }
+
+  do {
+    const string implementation = matmul_pd->impl_info_str();
+    if (implementation.find(requested_impl) != string::npos) {
+      ITEX_VLOG(1) << "Selected oneDNN MatMul implementation "
+                   << implementation << " for ITEX_MATMUL_IMPL="
+                   << requested_impl;
+      return Status::OK();
+    }
+  } while (matmul_pd->next_impl());
+
+  return errors::InvalidArgument(
+      "No oneDNN CPU MatMul implementation matches ITEX_MATMUL_IMPL=",
+      requested_impl);
+}
+
+using MklSgemmFunction = void (*)(int, int, int, int, int, int, float,
+                                  const float*, int, const float*, int, float,
+                                  float*, int);
+
+inline MklSgemmFunction LoadMklSgemm() {
+  static void* mkl_handle =
+      dlopen("libmkl_rt.so.3", RTLD_NOW | RTLD_LOCAL);
+  static MklSgemmFunction mkl_sgemm =
+      mkl_handle == nullptr
+          ? nullptr
+          : reinterpret_cast<MklSgemmFunction>(
+                dlsym(mkl_handle, "cblas_sgemm"));
+  return mkl_sgemm;
 }
 
 #endif
@@ -278,9 +333,9 @@ class MatMulOp : public OpKernel {
 
     ITEX_CHECK_OK(
         ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", true, &enable_cache_));
-    if (std::is_same<Device, CPUDevice>::value) {
-      enable_omp_ = LoadedCpuOnednnIsOpenMP();
-    }
+#ifdef INTEL_CPU_ONLY
+    enable_omp_ = LoadedCpuOnednnIsOpenMP();
+#endif
   }
 
   void InitOrSetMemory(OpKernelContext* context) {
@@ -430,9 +485,9 @@ class MatMulOp : public OpKernel {
     dst_shape_ = bcast.output_batch_shape();
     dst_shape_.AddDim(m);
     dst_shape_.AddDim(n);
-    if (std::is_same<Device, CPUDevice>::value) {
-      single_thread_ = -1;
-    }
+#ifdef INTEL_CPU_ONLY
+    single_thread_ = -1;
+#endif
     // The maximum number of dimensions for a tensor in DNNL is 6 on GPU.
     OP_REQUIRES(
         context, dst_shape_.dims() <= 6,
@@ -505,6 +560,59 @@ class MatMulOp : public OpKernel {
         matmul_pd = dnnl::matmul::primitive_desc(
             dnnl_engine_, src_md, weights_md_prefer, dst_md, post_ops_attr);
       }
+#ifdef INTEL_CPU_ONLY
+      const bool prefer_gemm_by_default =
+          std::is_same<T, float>::value && std::is_same<Tout, float>::value &&
+          params->a_dims.size() == 2 && params->b_dims.size() == 2 &&
+          params->c_dims.size() == 2 && !post_op_util_.HasBias() &&
+          post_ops_attr.get_post_ops().len() == 0;
+      OP_REQUIRES_OK(context, SelectCpuMatMulImplementation(
+                                  &matmul_pd, prefer_gemm_by_default));
+
+      string matmul_backend;
+      OP_REQUIRES_OK(context, ReadStringFromEnvVar(
+                                  "ITEX_MATMUL_BACKEND", "onednn",
+                                  &matmul_backend));
+      use_mkl_sgemm_ = false;
+      if (matmul_backend == "mkl") {
+        const bool dimensions_fit_mkl =
+            m <= std::numeric_limits<int>::max() &&
+            n <= std::numeric_limits<int>::max() &&
+            k <= std::numeric_limits<int>::max();
+        const bool mkl_eligible =
+            std::is_same<T, float>::value && std::is_same<Tout, float>::value &&
+            params->a_dims.size() == 2 && params->b_dims.size() == 2 &&
+            params->c_dims.size() == 2 && dimensions_fit_mkl &&
+            !weights_onednn_shape_.IsOneDnnTensor() &&
+            !post_op_util_.HasBias() &&
+            post_ops_attr.get_post_ops().len() == 0;
+        OP_REQUIRES(
+            context, mkl_eligible,
+            errors::InvalidArgument(
+                "ITEX_MATMUL_BACKEND=mkl currently supports only plain "
+                "rank-2 FP32 MatMul without bias or post-ops"));
+        mkl_sgemm_ = LoadMklSgemm();
+        OP_REQUIRES(
+            context, mkl_sgemm_ != nullptr,
+            errors::NotFound(
+                "ITEX_MATMUL_BACKEND=mkl could not load "
+                "cblas_sgemm from libmkl_rt.so.3"));
+        mkl_m_ = static_cast<int>(m);
+        mkl_n_ = static_cast<int>(n);
+        mkl_k_ = static_cast<int>(k);
+        use_mkl_sgemm_ = true;
+        ITEX_VLOG(1) << "Selected oneMKL SGEMM for rank-2 FP32 MatMul "
+                     << mkl_m_ << "x" << mkl_k_ << ":" << mkl_k_ << "x"
+                     << mkl_n_;
+      } else {
+        OP_REQUIRES(context,
+                    matmul_backend == "onednn" || matmul_backend == "auto",
+                    errors::InvalidArgument(
+                        "ITEX_MATMUL_BACKEND must be one of: auto, onednn, "
+                        "mkl; got ",
+                        matmul_backend));
+      }
+#endif
 
       // Handle Add fusion and decide output tensor buffer.
       if (post_op_util_.HasAdd()) {
@@ -629,17 +737,43 @@ class MatMulOp : public OpKernel {
     }
   }
 
+#ifdef INTEL_CPU_ONLY
+  void ExecuteMklSgemm(OpKernelContext* context) {
+    constexpr int kCblasRowMajor = 101;
+    constexpr int kCblasNoTrans = 111;
+    constexpr int kCblasTrans = 112;
+    const int trans_a = adj_x_ ? kCblasTrans : kCblasNoTrans;
+    const int trans_b = adj_y_ ? kCblasTrans : kCblasNoTrans;
+    const int lda = adj_x_ ? mkl_m_ : mkl_k_;
+    const int ldb = adj_y_ ? mkl_k_ : mkl_n_;
+    mkl_sgemm_(
+        kCblasRowMajor, trans_a, trans_b, mkl_m_, mkl_n_, mkl_k_, 1.0f,
+        reinterpret_cast<const float*>(context->tensor_data(kSrcIndex_)), lda,
+        reinterpret_cast<const float*>(context->tensor_data(kWeightIndex_)),
+        ldb, 0.0f,
+        reinterpret_cast<float*>(GetTensorBuffer<Tout>(dst_tensor_)), mkl_n_);
+  }
+#endif
+
   void Compute(OpKernelContext* context) override {
     mutex_lock lock(&mu_compute_);
     dst_tensor_ = nullptr;
+#ifdef INTEL_CPU_ONLY
+    if (use_mkl_sgemm_ && !is_input_zero_ && enable_cache_ && is_init_ &&
+        context->is_input_same(kSrcIndex_, input_dims_) &&
+        context->is_input_same(kWeightIndex_, weights_dims_)) {
+      OP_REQUIRES_OK(context, context->allocate_output(kDstIndex_, dst_shape_,
+                                                       &dst_tensor_));
+      ExecuteMklSgemm(context);
+      return;
+    }
+#endif
     dnnl_engine_ = CreateDnnlEngine<Device>(*context);
     // onednn_stream has thread safety issue, need create a new one in
     // every compute.
-    if (std::is_same<Device, CPUDevice>::value) {
-      dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_, single_thread_);
-    } else {
-      dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_);
-    }
+#ifndef INTEL_CPU_ONLY
+    dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_);
+#endif
     scratchpad_tensor_ = std::make_shared<Tensor>();
     InitOrSetMemory(context);
 
@@ -649,8 +783,21 @@ class MatMulOp : public OpKernel {
       return;
     }
 
+#ifdef INTEL_CPU_ONLY
+    ITEX_VLOG(1) << "MatMul backend state: use_mkl_sgemm="
+                 << use_mkl_sgemm_;
+    if (use_mkl_sgemm_) {
+      ExecuteMklSgemm(context);
+    } else {
+      dnnl_stream_ =
+          CreateDnnlStream(*context, dnnl_engine_, single_thread_);
+      matmul_primitive_.execute(dnnl_stream_, fwd_primitive_args_);
+      dnnl_stream_.wait();
+    }
+#else
     matmul_primitive_.execute(dnnl_stream_, fwd_primitive_args_);
     dnnl_stream_.wait();
+#endif
     scratchpad_tensor_.reset();
   }
 
@@ -677,6 +824,9 @@ class MatMulOp : public OpKernel {
 #ifdef INTEL_CPU_ONLY
   int single_thread_ = -1;
   bool enable_omp_;
+  bool use_mkl_sgemm_ = false;
+  int mkl_m_ = 0, mkl_n_ = 0, mkl_k_ = 0;
+  MklSgemmFunction mkl_sgemm_ = nullptr;
 #endif
   mutex mu_compute_;
   std::unordered_map<int, memory> fwd_primitive_args_;
@@ -721,9 +871,9 @@ class MatMulFunctor {
 
     ITEX_CHECK_OK(
         ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", true, &enable_cache_));
-    if (std::is_same<Device, CPUDevice>::value) {
-      enable_omp_ = LoadedCpuOnednnIsOpenMP();
-    }
+#ifdef INTEL_CPU_ONLY
+    enable_omp_ = LoadedCpuOnednnIsOpenMP();
+#endif
   }
 
   void InitOrSetMemory(OpKernelContext* context, T* input_tensor_data,
@@ -852,9 +1002,9 @@ class MatMulFunctor {
     dst_shape_ = bcast.output_batch_shape();
     dst_shape_.AddDim(m);
     dst_shape_.AddDim(n);
-    if (std::is_same<Device, CPUDevice>::value) {
-      single_thread_ = -1;
-    }
+#ifdef INTEL_CPU_ONLY
+    single_thread_ = -1;
+#endif
     // The maximum number of dimensions for a tensor in DNNL is 6 on GPU.
     OP_REQUIRES(
         context, dst_shape_.dims() <= 6,
@@ -906,6 +1056,15 @@ class MatMulFunctor {
         matmul_pd = dnnl::matmul::primitive_desc(
             dnnl_engine_, src_md, weights_md_prefer, dst_md, post_ops_attr);
       }
+#ifdef INTEL_CPU_ONLY
+      const bool prefer_gemm_by_default =
+          std::is_same<T, float>::value && std::is_same<Tout, float>::value &&
+          params->a_dims.size() == 2 && params->b_dims.size() == 2 &&
+          params->c_dims.size() == 2 && !post_op_util_.HasBias() &&
+          post_ops_attr.get_post_ops().len() == 0;
+      OP_REQUIRES_OK(context, SelectCpuMatMulImplementation(
+                                  &matmul_pd, prefer_gemm_by_default));
+#endif
 
       // Handle Add fusion and decide output tensor buffer.
       if (post_op_util_.HasAdd()) {
