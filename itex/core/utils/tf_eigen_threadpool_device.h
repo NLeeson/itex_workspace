@@ -16,7 +16,7 @@ limitations under the License.
 #ifndef ITEX_CORE_UTILS_TF_EIGEN_THREADPOOL_DEVICE_H_
 #define ITEX_CORE_UTILS_TF_EIGEN_THREADPOOL_DEVICE_H_
 
-#if defined(INTEL_CPU_ONLY) && !defined(ITEX_BUILD_JAX)
+#if !defined(ITEX_BUILD_JAX)
 
 #include <algorithm>
 #include <functional>
@@ -119,12 +119,14 @@ struct CachedEigenDevice {
   Eigen::ThreadPoolDevice device;
 };
 
-inline const Eigen::ThreadPoolDevice& GetTensorFlowEigenCpuDevice(
+inline const Eigen::ThreadPoolDevice* GetTensorFlowEigenCpuDevice(
     TF_OpKernelContext* context) {
+  if (context == nullptr) return nullptr;
   void* tensorflow_threadpool =
       ::ITEX_GetTensorFlowThreadPool(static_cast<void*>(context));
-  ITEX_CHECK(tensorflow_threadpool != nullptr)
-      << "TensorFlow Eigen CPU threadpool is unavailable";
+  if (tensorflow_threadpool == nullptr) {
+    return nullptr;
+  }
 
   static std::mutex mu;
   static std::vector<std::unique_ptr<CachedEigenDevice>> devices;
@@ -132,7 +134,7 @@ inline const Eigen::ThreadPoolDevice& GetTensorFlowEigenCpuDevice(
   std::lock_guard<std::mutex> lock(mu);
   for (const auto& cached : devices) {
     if (cached->adapter.tensorflow_threadpool() == tensorflow_threadpool) {
-      return cached->device;
+      return &cached->device;
     }
   }
 
@@ -152,12 +154,12 @@ inline const Eigen::ThreadPoolDevice& GetTensorFlowEigenCpuDevice(
         << " cache_key=tensorflow_pool"
         << " consumer=eigen_cpu_device";
   }
-  return cached->device;
+  return &cached->device;
 }
 
 }  // namespace tf_eigen_threadpool_device_internal
 
-inline const Eigen::ThreadPoolDevice& GetTensorFlowEigenCpuDevice(
+inline const Eigen::ThreadPoolDevice* GetTensorFlowEigenCpuDevice(
     TF_OpKernelContext* context) {
   return tf_eigen_threadpool_device_internal::GetTensorFlowEigenCpuDevice(
       context);
@@ -165,6 +167,6 @@ inline const Eigen::ThreadPoolDevice& GetTensorFlowEigenCpuDevice(
 
 }  // namespace itex
 
-#endif  // INTEL_CPU_ONLY && !ITEX_BUILD_JAX
+#endif  // !ITEX_BUILD_JAX
 
 #endif  // ITEX_CORE_UTILS_TF_EIGEN_THREADPOOL_DEVICE_H_

@@ -242,13 +242,14 @@ inline dnnl::engine& CreateDnnlEngine<CPUDevice>(
 inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
                                      const dnnl::engine& engine,
                                      int num_thread = -1) {
+  if (engine.get_kind() == dnnl::engine::kind::gpu) {
 #ifndef INTEL_CPU_ONLY
-  // GPU
-  ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::gpu)
-      << "Create oneDNN stream for unsupported engine.";
-  auto* ITEX_GPU_stream = ctx.GetDeviceStream();
-  return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
+    auto* ITEX_GPU_stream = ctx.GetDeviceStream();
+    return dnnl::sycl_interop::make_stream(engine, *ITEX_GPU_stream);
 #else
+    ITEX_LOG(FATAL) << "GPU engine used in CPU-only binary";
+#endif
+  }
 #ifndef CC_BUILD
   ITEX_CHECK(engine.get_kind() == dnnl::engine::kind::cpu)
       << "Create oneDNN stream for unsupported engine.";
@@ -304,7 +305,6 @@ inline dnnl::stream CreateDnnlStream(const OpKernelContext& ctx,
   return dnnl::stream(engine);
 #endif  // CC_THREADPOOL_BUILD
 #endif  // CC_BUILD
-#endif  // INTEL_CPU_ONLY
 }
 
 #endif  // ITEX_BUILD_JAX
@@ -654,28 +654,28 @@ class BiasCacheManager {
 
 template <typename Device>
 inline dnnl::fpmath_mode GetFP32MathMode() {
-  std::string fp32_math_mode = "fp32";
-  ITEX_CHECK_OK(
-      ReadStringFromEnvVar("ITEX_FP32_MATH_MODE", "fp32", &fp32_math_mode));
+  std::string fp32_math_mode = "";
+  ReadStringFromEnvVar("ONEDNN_DEFAULT_FPMATH_MODE", "", &fp32_math_mode);
+  if (fp32_math_mode.empty()) {
+    ReadStringFromEnvVar("ITEX_FP32_MATH_MODE", "strict", &fp32_math_mode);
+  }
   fp32_math_mode = str_util::Lowercase(fp32_math_mode);
-  if (fp32_math_mode == "fp32") {
+  if (fp32_math_mode == "fp32" || fp32_math_mode == "strict" || fp32_math_mode.empty()) {
     return dnnl::fpmath_mode::strict;
   }
-  if (fp32_math_mode == "tf32") {
-    if (std::is_same<Device, CPUDevice>::value) {
-      ITEX_LOG(FATAL) << "Did not support TF32 math mode on CPU ";
-    }
-    return dnnl::fpmath_mode::tf32;
+  if (fp32_math_mode == "any") {
+    return dnnl::fpmath_mode::any;
   }
-  if (fp32_math_mode == "bf32") {
-    if (std::is_same<Device, GPUDevice>::value) {
-      ITEX_LOG(FATAL) << "Did not support BF32 math mode on GPU ";
-    }
+  if (fp32_math_mode == "bf16" || fp32_math_mode == "bf32") {
     return dnnl::fpmath_mode::bf16;
   }
-  ITEX_LOG(FATAL)
-      << "Invalid ITEX_FP32_MATH_MODE, should be FP32, TF32 or BF32, but got "
-      << fp32_math_mode;
+  if (fp32_math_mode == "f16") {
+    return dnnl::fpmath_mode::f16;
+  }
+  if (fp32_math_mode == "tf32") {
+    return dnnl::fpmath_mode::tf32;
+  }
+  return dnnl::fpmath_mode::strict;
 }
 
 }  // namespace itex

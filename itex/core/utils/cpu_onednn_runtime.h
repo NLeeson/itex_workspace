@@ -17,6 +17,7 @@ limitations under the License.
 #define ITEX_CORE_UTILS_CPU_ONEDNN_RUNTIME_H_
 
 #include <dlfcn.h>
+#include "itex/core/utils/env_var.h"
 
 namespace itex {
 
@@ -28,14 +29,15 @@ inline bool LoadedCpuOnednnIsOpenMP() {
   return false;
 #else
   using ProbeFn = int (*)();
-  static const int is_openmp = []() {
-    auto* probe = reinterpret_cast<ProbeFn>(
-        dlsym(RTLD_DEFAULT, "ITEX_CpuOnednnRuntimeIsOpenMP"));
-    // Wrapper not loaded (GPU-only or tests): default product is OpenMP.
-    if (probe == nullptr) return 1;
-    return probe();
-  }();
-  return is_openmp != 0;
+  auto* probe = reinterpret_cast<ProbeFn>(
+      dlsym(RTLD_DEFAULT, "ITEX_CpuOnednnRuntimeIsOpenMP"));
+  if (probe != nullptr) {
+    return probe() != 0;
+  }
+  bool enable_omp = true;
+  auto status = ReadBoolFromEnvVar("ITEX_OMP_THREADPOOL", true, &enable_omp);
+  if (!status.ok()) return true;
+  return enable_omp;
 #endif
 }
 

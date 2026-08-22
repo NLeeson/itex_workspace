@@ -23,19 +23,32 @@
 namespace {
 
 Eigen::ThreadPoolInterface* GetTensorFlowThreadPool(void* opaque_context) {
+  if (opaque_context == nullptr) {
+    return nullptr;
+  }
+
+  // opaque_context is TF_OpKernelContext* from the TensorFlow C API, which is
+  // defined as: struct TF_OpKernelContext { ::tensorflow::OpKernelContext* context; };
   auto* tf_context =
-      reinterpret_cast<::tensorflow::OpKernelContext*>(opaque_context);
+      *reinterpret_cast<::tensorflow::OpKernelContext**>(opaque_context);
   if (tf_context == nullptr) {
     return nullptr;
   }
 
   auto* tf_device = tf_context->device();
-  if (tf_device == nullptr) {
-    return nullptr;
+  if (tf_device != nullptr) {
+    const auto* cpu_worker_threads = tf_device->tensorflow_cpu_worker_threads();
+    if (cpu_worker_threads != nullptr && cpu_worker_threads->workers != nullptr) {
+      return cpu_worker_threads->workers->AsEigenThreadPool();
+    }
+
+    const auto* eigen_device = tf_device->eigen_cpu_device();
+    if (eigen_device != nullptr && eigen_device->getPool() != nullptr) {
+      return eigen_device->getPool();
+    }
   }
 
-  const auto* eigen_device = tf_device->eigen_cpu_device();
-  return eigen_device == nullptr ? nullptr : eigen_device->getPool();
+  return nullptr;
 }
 
 }  // namespace

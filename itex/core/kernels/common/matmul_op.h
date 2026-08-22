@@ -277,14 +277,10 @@ class MatMulOp : public OpKernel {
     }
 
     ITEX_CHECK_OK(
-        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", false, &enable_cache_));
-#ifdef INTEL_CPU_ONLY
-    enable_omp_ = false;
-#endif
-
-#ifdef CC_THREADPOOL_BUILD
-    enable_omp_ = false;
-#endif
+        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", true, &enable_cache_));
+    if (std::is_same<Device, CPUDevice>::value) {
+      enable_omp_ = LoadedCpuOnednnIsOpenMP();
+    }
   }
 
   void InitOrSetMemory(OpKernelContext* context) {
@@ -434,10 +430,9 @@ class MatMulOp : public OpKernel {
     dst_shape_ = bcast.output_batch_shape();
     dst_shape_.AddDim(m);
     dst_shape_.AddDim(n);
-#ifdef INTEL_CPU_ONLY
-    if (!enable_omp_)
-      single_thread_ = ExecuteNThreadedGemm(m, n, k, sizeof(T), sizeof(Tout));
-#endif
+    if (std::is_same<Device, CPUDevice>::value) {
+      single_thread_ = -1;
+    }
     // The maximum number of dimensions for a tensor in DNNL is 6 on GPU.
     OP_REQUIRES(
         context, dst_shape_.dims() <= 6,
@@ -640,11 +635,11 @@ class MatMulOp : public OpKernel {
     dnnl_engine_ = CreateDnnlEngine<Device>(*context);
     // onednn_stream has thread safety issue, need create a new one in
     // every compute.
-#ifdef INTEL_CPU_ONLY
-    dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_, single_thread_);
-#else
-    dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_);
-#endif
+    if (std::is_same<Device, CPUDevice>::value) {
+      dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_, single_thread_);
+    } else {
+      dnnl_stream_ = CreateDnnlStream(*context, dnnl_engine_);
+    }
     scratchpad_tensor_ = std::make_shared<Tensor>();
     InitOrSetMemory(context);
 
@@ -725,13 +720,10 @@ class MatMulFunctor {
     }
 
     ITEX_CHECK_OK(
-        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", false, &enable_cache_));
-#ifdef INTEL_CPU_ONLY
-    enable_omp_ = false;
-#endif
-#ifdef CC_THREADPOOL_BUILD
-    enable_omp_ = false;
-#endif
+        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", true, &enable_cache_));
+    if (std::is_same<Device, CPUDevice>::value) {
+      enable_omp_ = LoadedCpuOnednnIsOpenMP();
+    }
   }
 
   void InitOrSetMemory(OpKernelContext* context, T* input_tensor_data,
@@ -860,11 +852,9 @@ class MatMulFunctor {
     dst_shape_ = bcast.output_batch_shape();
     dst_shape_.AddDim(m);
     dst_shape_.AddDim(n);
-#ifdef INTEL_CPU_ONLY
-    if (!enable_omp_)
-      single_thread_ = ExecuteNThreadedGemm(m * bcast.output_batch_size(), n, k,
-                                            sizeof(T), sizeof(Tout));
-#endif
+    if (std::is_same<Device, CPUDevice>::value) {
+      single_thread_ = -1;
+    }
     // The maximum number of dimensions for a tensor in DNNL is 6 on GPU.
     OP_REQUIRES(
         context, dst_shape_.dims() <= 6,
@@ -1126,7 +1116,7 @@ class FusedMatMulGradOp : public OpKernel {
     }
 
     ITEX_CHECK_OK(
-        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", false, &enable_cache_));
+        ReadBoolFromEnvVar("ITEX_CACHE_ONEDNN_OBJECT", true, &enable_cache_));
   }
 
   void InitOrSetMemory(OpKernelContext* context) {

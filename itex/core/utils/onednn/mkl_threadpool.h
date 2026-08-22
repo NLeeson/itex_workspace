@@ -246,10 +246,16 @@ struct MklDnnThreadPool : public threadpool_iface {
 
 inline MklDnnThreadPool* GetMklDnnThreadPool(const OpKernelContext* ctx,
                                              int num_threads = -1) {
-  void* tensorflow_threadpool = ::ITEX_GetTensorFlowThreadPool(
-      const_cast<OpKernelContext*>(ctx)->Get());
-  ITEX_CHECK(tensorflow_threadpool != nullptr)
-      << "TensorFlow Eigen CPU threadpool is unavailable";
+  void* tensorflow_threadpool = nullptr;
+  if (ctx != nullptr && const_cast<OpKernelContext*>(ctx)->Get() != nullptr) {
+    tensorflow_threadpool = ::ITEX_GetTensorFlowThreadPool(
+        const_cast<OpKernelContext*>(ctx)->Get());
+  }
+
+  if (tensorflow_threadpool == nullptr) {
+    const auto& device = OpKernelContext::eigen_cpu_device_singleton();
+    tensorflow_threadpool = device.getPool();
+  }
 
   static std::mutex mu;
   static std::vector<std::unique_ptr<MklDnnThreadPool>> threadpools;

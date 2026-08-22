@@ -48,9 +48,8 @@ limitations under the License.
 #endif  // USING_NEXTPLUGGABLE_DEVICE
 #include "tensorflow/c/kernels.h"
 #include "tensorflow/c/kernels_experimental.h"
-#ifdef INTEL_CPU_ONLY
 #include "itex/core/utils/tf_eigen_threadpool_device.h"
-#else
+#ifndef INTEL_CPU_ONLY
 #include "itex/core/devices/gpu/eigen_stream_device.h"
 #include "itex/core/devices/gpu/gpu_device_plugin.h"
 #endif  // INTEL_CPU_ONLY
@@ -355,9 +354,7 @@ class OpKernelContext {
   static int eigen_cpu_threadpool_size_singleton() {
     static int num_threads = []() {
       const int max_threads = port::NumSchedulableCPUs();
-      const int default_threads =
-          (max_threads + port::NumHyperthreadsPerCore() - 1) /
-          port::NumHyperthreadsPerCore();
+      const int default_threads = max_threads;
       int64_t configured_threads = default_threads;
       auto status = ReadInt64FromEnvVar("ITEX_ONEDNN_THREADPOOL_SIZE",
                                         default_threads, &configured_threads);
@@ -390,10 +387,7 @@ class OpKernelContext {
   static const Eigen::ThreadPoolDevice& eigen_cpu_device_singleton() {
     static Eigen::ThreadPool threadpool(eigen_cpu_threadpool_size_singleton());
     static Eigen::ThreadPoolDevice threadpool_device(
-        &threadpool,
-        (eigen_cpu_threadpool_size_singleton() +
-         port::NumHyperthreadsPerCore() - 1) /
-            port::NumHyperthreadsPerCore());
+        &threadpool, eigen_cpu_threadpool_size_singleton());
     static const bool logged = []() {
       bool debug_wiring = false;
       auto status =
@@ -402,9 +396,7 @@ class OpKernelContext {
         ITEX_LOG(WARNING) << "ITEX_DEBUG_WIRING parse failed: " << status;
       } else if (debug_wiring) {
         const int pool_threads = eigen_cpu_threadpool_size_singleton();
-        const int device_threads =
-            (pool_threads + port::NumHyperthreadsPerCore() - 1) /
-            port::NumHyperthreadsPerCore();
+        const int device_threads = pool_threads;
         ITEX_LOG(INFO)
             << "ITEX_DEBUG_WIRING component=itex_eigen_threadpool "
                "event=legacy_singleton_created"
@@ -423,13 +415,11 @@ class OpKernelContext {
   }
 
   const Eigen::ThreadPoolDevice& eigen_cpu_device() const {
-#ifdef INTEL_CPU_ONLY
-    return GetTensorFlowEigenCpuDevice(ctx_);
-#else
-    // Non-CPU build paths retain the legacy fallback. CPU plugin kernels use
-    // TensorFlow's borrowed intra-op pool through GetTensorFlowEigenCpuDevice.
+    if (ctx_ != nullptr) {
+      const auto* dev = GetTensorFlowEigenCpuDevice(ctx_);
+      if (dev != nullptr) return *dev;
+    }
     return eigen_cpu_device_singleton();
-#endif
   }
 
 #ifndef INTEL_CPU_ONLY
