@@ -406,9 +406,12 @@ def _sycl_autoconf_imp(repository_ctx):
         else:
             additional_inc = "\"\""
 
+        mkl_include_dir = ""
         if _enable_mkl(repository_ctx) and repository_ctx.os.environ.get("ONEAPI_MKL_PATH") != None:
-            sycl_defines["%{ONEAPI_MKL_PATH}"] = str(find_mkl_path(repository_ctx))
-            builtin_includes += [find_mkl_path(repository_ctx) + "/include"]
+            mkl_path = str(find_mkl_path(repository_ctx))
+            mkl_include_dir = str(repository_ctx.path(mkl_path + "/include").realpath)
+            sycl_defines["%{ONEAPI_MKL_PATH}"] = mkl_path
+            builtin_includes += [mkl_include_dir]
         else:
             sycl_defines["%{ONEAPI_MKL_PATH}"] = ""
         if repository_ctx.os.environ.get("TMPDIR") != None:
@@ -441,6 +444,13 @@ def _sycl_autoconf_imp(repository_ctx):
         sycl_defines["%{PYTHON_LIB_PATH}"] = repository_ctx.os.environ[_PYTHON_LIB_PATH]
 
         sycl_internal_inc_dirs = find_sycl_include_path(repository_ctx)
+        # Prefer the explicitly configured oneMKL headers over compiler-default
+        # paths (for example /opt/include) that may provide a oneMath
+        # compatibility shim for oneapi/mkl/*.hpp.
+        if mkl_include_dir:
+            sycl_internal_inc_dirs = [mkl_include_dir] + [
+                d for d in sycl_internal_inc_dirs if d != mkl_include_dir
+            ]
         sycl_internal_inc = "\", \"".join(sycl_internal_inc_dirs)
         sycl_internal_isystem_inc = []
         for d in sycl_internal_inc_dirs:

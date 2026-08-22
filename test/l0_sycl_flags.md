@@ -157,3 +157,5 @@ environment.
 - [LLVM SYCL environment variables](https://github.com/intel/llvm/blob/sycl/sycl/doc/EnvironmentVariables.md)
 - [Unified Runtime Level Zero adapter variables](https://oneapi-src.github.io/unified-runtime/core/LEVEL_ZERO.html)
 - [Intel Compute Runtime FAQ](https://github.com/intel/compute-runtime/blob/master/FAQ.md)
+
+- [MORE FLAGS] (https://intel.github.io/llvm/EnvironmentVariables.html)
